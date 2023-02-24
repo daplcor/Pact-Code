@@ -5,71 +5,60 @@
 
 
 (module ku-market GOVERNANCE
-
-    (implements kip.token-policy-v1)
-    (use kip.token-policy-v1 [token-info])
-
+  
     (defcap GOVERNANCE ()
-    (enforce-guard (keyset-ref-guard "free.ku-admin" )))
+    (enforce-guard (keyset-ref-guard "free.ku-admin" ))
+    (compose-capability (OPS_INTERNAL))
+    )
 
     (defcap OPS()
-    (enforce-guard (keyset-ref-guard "free.ku-ops" )))
-
-    (defcap RESERVES ()
-    true
-  )
-
-  (defcap MINT ()
-     true
-  )
-
-  (defcap RESERVE ()
-    true
-  )
-      
-  (defcap RESERVED (reservation:object{reservation})
-    @event
-    true
-  )
-
-
-  (defcap QUOTE:bool
-    ( sale-id:string
-      token-id:string
-      amount:decimal
-      price:decimal
-      sale-price:decimal
-      royalty-payout:decimal
-      creator:string
-      spec:object{quote-spec}
+    (enforce-guard (keyset-ref-guard "free.ku-ops" ))
+    (compose-capability (OPS_INTERNAL))
     )
-    @doc "For event emission purposes"
-    @event
-    true
-  )
-  (defschema reservation
-    @doc "A reserved NFT in a collection. OPS will use these to mint NFTs. \
-    \ ID is collection|id."
-    collection:string
-    id:string
-    account:string
-    minted:bool
+
+  (defcap CREATECOL()
+  true
   )
 
-  (defschema create-account-params 
-    owner:string ; k:string 
-    guard:guard 
-  )
+  (defcap EDITCOL (creator-guard:guard) 
+  @managed
+  (bind (get-col-owner creator-guard) (enforce-guard creator-guard))
+)
 
-    (defschema mint-params
-      minter:string ; k:account
-      name:string 
-      description:string
-      content-hash:string 
-      spec:object
-      collection-name:string
-      content-uri:object{kip.token-manifest.mf-uri}
-    )
+
+  (defcap EDIT()
+  (compose-capability (OPS))
+  (compose-capability (CREATOR))
+  )
+    
+  (defcap CREATOR()
+  (enforce-guard (keyset-ref-guard "creator-guard"))
+  )
+   
+  (defcap OPS_INTERNAL ()
+  (compose-capability (MINT))
+  )
+  
+  (defcap WHITELIST_UPDATE () 
+  true
+)
+
+
+(defcap MINT () 
+(compose-capability (WHITELIST_UPDATE))
+true
+)
+
+(defcap MINT_EVENT 
+(
+  collection:string 
+  tier-id:string 
+  account:string 
+  amount:integer
+)
+@event true
+)
+
 
   
 ; #################################################################
@@ -88,153 +77,193 @@
   ; mint-royalties define who gets paid when NFTs in this collection are 
   ; minted.
   ; sale-royalties define who gets paid when NFTs in this collection are sold.
-  (defschema collection-schema
-    provenance-hash:string ; combined token hash
-    tokens-list:[string] ; list of image hashes
-    creator:string ; k:account 
+  (defschema collection
+    @doc "Stores the name of the collection, the tiers, \
+    \ the total supply of the collection. \
+    \ The id is the name of the collection."
+    name:string
+    total-supply:integer
+    bank-account:string
+    creator:string
     creator-guard:guard
-    total-supply:integer ; token supply
-    mint-starts:time
-    mint-end-time:time 
-    whistlist-mint-time:time 
-    royalty-receiver:string ; account which receives the royalty
-    royalty-rate:decimal
-    mint-price:decimal 
-    name:string
+    category:string
+    bank-guard:guard
+    provenance:string
+    root-uri:string
     description:string
-    category:string 
-    mint-number:integer
+    current-index:integer
     fungible:module{fungible-v2}
-  ) 
-
-
-  (defschema account-schema
-    account:string
-    minted:integer
+    tiers:[object:{tier}]
   )
 
-  (defschema account 
-    owner:string ; k:string 
-    guard:guard 
-    active:bool 
-  )
-
-  (defschema token-metadata
-    name:string
-    description:string
-    image:string
-    image-hash:string
-    attributes:[object{traits-schema}]
-  )
-
-  (defschema quote-schema
-    id:string
-    spec:object{quote-spec})
-
-  (defschema quote-spec
-    @doc "Quote data to include in payload"
-    price:decimal
-    recipient:string
-    recipient-guard:guard
-    )
-
-    (defschema nft-manifest-datum 
-      name:string 
-      description:string 
-      content-hash:string 
-      spec:object 
-      creator:string  
-      collection-name:string 
-      content-uri:object{kip.token-manifest.mf-uri}
-      mint-index:integer 
-      mint-time:time 
-    )
-
-    (defschema mint-schema
-        tokens-list:[integer]
-        current-length:integer
-        status:string
-        public-minted:decimal
+      (defschema minted-token
+        @doc "Stores the data for a minted token. \
+        \ The id is the collection, tier-id, account, and token-id."
+        collection:string
+        account:string
+        guard:guard
+        token-id:integer
+        hash:string
+        revealed:bool
       )
     
+   
+      (defschema tier
+        @doc "Stores the start time, end time, tier type (WL, PUBLIC), \
+        \ tier-id, cost for this tier to mint, \
+        \ and the limit for each minter."
+        tier-id:string
+        tier-type:string
+        start-time:time
+        end-time:time
+        cost:decimal
+        limit:decimal
+      )
+    
+  (defschema tier-whitelist-data
+  @doc "A data structure for the whitelist data for a tier"
+  tier-id:string
+  accounts:[string]
+  )
+  
+      (defschema whitelisted
+        @doc "Stores the account of the whitelisted user, the tier-id, \
+        \ and amount they have minted. The id is 'collection:tier-id:account'."
+        account:string
+        tier-id:string 
+        mint-count:integer 
+      )
+
 
   ; ============================================ 
   ; ==                 Tables                 ==
   ; ============================================
 
-  (deftable accounts:{account})
-  (deftable collection-info:{collection-schema})
-  (deftable reservations:{reservation})
-  (deftable manifest-datum:{nft-manifest-datum})
-  (deftable account-details:{account-schema})
-  (deftable metadata:{token-metadata})
-  (deftable quotes:{quote-schema})
-  (deftable mint-status:{mint-schema})
-  (deftable mintp:{mint-params})
-  (deftable account-params:{create-account-params})
+  
+  (deftable collections:{collection})
+  (deftable minted-tokens:{minted-token})
+  (deftable whitelist-table:{whitelisted})
+  (deftable tiers:{tier})
+  (deftable tdata:{token-data})
+  (deftable tier-data:{tier-whitelist-data})
 
- ; ============================================
+
+  ; ============================================
   ; ==         Initialize Collection          ==
   ; ============================================
+ 
+  (defun create-collection:string 
+    (
+      collection-data:object
+      fungible:module{fungible-v2}
+      bank-guard:guard
+  )
+    @doc "Creates a collection with the provided data."
+    (with-capability (CREATECOL)
+      ; Validate the collection tiers
+      (enforce (> (at "total-supply" collection-data) 0.0) "Total supply must be greater than 0")
+      (validate-tiers (at "tiers" collection-data))
+      ; Create the bank account
+      (insert collections (at "name" collection-data)
+        (+ 
+          { "fungible": fungible
+          , "current-index": 1
+          , "bank-account": (create-principal bank-guard)
+          , "bank-guard": bank-guard
+          , "total-supply": (floor (at "total-supply" collection-data))
+          }
+          collection-data
+        )
+      )
+    )
+  )
 
-  (defun create-collection (
-    provenance:string
-    tokens-list:[string]
-    creator:string
-    creator-guard:guard
-    total-supply:integer
-    mint-starts:time
-    mint-end-time:time
-    whitelist-mint-time:time
-    royalty-receiver:string
-    royalty-rate:decimal
-    mint-price:decimal
-    name:string
-    description:string
-    category:string
-    mint-number:integer
-    fungible:module{fungible-v2})
-    (enforce (= (length tokens-list) total-supply) "Total-supply and tokens-list length does not match")
-    (let ( (creator-details:object (fungible::details creator ))
+
+  (defun update-collection-tiers 
+    (
+      collection:string 
+      tiers:[object:{tier}]
+    )
+    @doc "Updates the tiers of the given collection"
+    (with-capability (OPS)
+      (validate-tiers tiers)
+      (update collections collection
+        { "tiers": tiers }
+      )
+    )
+  )
+  
+
+  (defun validate-tiers:bool (tiers:[object:{tier}])
+  @doc "Validates the tier start and end time, ensuring they don't overlap \
+  \ and that start is before end for each."
+  (let*
+    (
+      (no-overlap
+        (lambda (tier:object{tier} other:object{tier})
+          ;; If the other is the same as the tier, don't check it
+          (if (!= (at "tier-id" tier) (at "tier-id" other))
+            (enforce 
+              (or
+                ;; Start and end of other is before start of tier
+                (and? 
+                  (<= (at "start-time" other))
+                  (<= (at "end-time" other)) 
+                  (at "start-time" tier)
+                )
+                ;; Start and end of other is after end of tier
+                (and?
+                  (>= (at "end-time" other))
+                  (>= (at "start-time" other)) 
+                  (at "end-time" tier)
+                )
+              )
+              "Tiers overlap"
             )
-      (fungible::enforce-unit royalty-rate)
-      (enforce (>= mint-end-time mint-starts) Invalid_Mint_Time)
-      (enforce (=
-        (at 'guard creator-details) creator-guard)
-        "Creator guard does not match")
-      (enforce (and
-        (>= royalty-rate 0.0) (<= royalty-rate 1.0))
-        "Invalid royalty rate")
-        (enforce (>= mint-price 0.0) Invalid_NFT_Price)
-        (enforce (>= total-supply 1) Invalid_Collection_Size)
-        (enforce (!= "" name) Invalid_Collection_Name))
+            []
+          )
+        )
+      )
+      (validate-tier 
+        (lambda (tier:object{tier})
+          ;; Enforce start time is before end time, 
+          ;; and that the tier type is valid
+          (enforce
+            (<= (at "start-time" tier) (at "end-time" tier)) 
+            "Start must be before end"
+          )
+          (enforce
+            (or 
+              (= (at "tier-type" tier) TIER_TYPE_WL)
+              (= (at "tier-type" tier) TIER_TYPE_PUBLIC)
+            )
+            "Invalid tier type"
+          )
+          (enforce
+            (>= (at "cost" tier) 0.0)
+            "Cost must be greater than 0"
+          )
+          ;; Loop through all the tiers and ensure they don't overlap
+          (map (no-overlap tier) tiers)
+        )
+      )
+    )
+    (map (validate-tier) tiers)
+  )
+)
 
-    (insert collection-info COLLECTION_INFO {
-      "provenance-hash": provenance,
-      "tokens-list": tokens-list,
-      "creator": creator,
-      "creator-guard": creator-guard,
-      "total-supply": total-supply,
-      "mint-starts": mint-starts,
-      "mint-end-time": mint-end-time,
-      "whitelist-mint-time": whitelist-mint-time,
-      "royalty-receiver": royalty-receiver,
-      "royalty-rate": royalty-rate,
-      "mint-price": mint-price,
-      "name": name,
-      "description": description,
-      "category": category,
-      "mint-number": 0,
-      "fungible": fungible
-    })
-    (write mint-status MINT_STATUS {
-        "current-length": (length tokens-list),
-        "tokens-list": (map (str-to-int 64) tokens-list),
-        "status": MINT_STARTED,
-        "public-minted": 0.0
-     }))
-
-
+(defun update-collection-uri 
+  (
+    collection:string
+    uri:string
+  )
+  (with-capability (OPS)
+    (update collections collection
+      { "root-uri": uri }
+    )
+  )
+)
+    
   ; ============================================
   ; ==               Constants                ==
   ; ============================================
@@ -243,443 +272,604 @@
     (defconst Invalid_Collection_Size "Invalid_Collection_Size")
     (defconst Invalid_NFT_Price "Invalid_NFT_Price")
     (defconst Invalid_Mint_Time "Invalid_Mint_Time")
+    (defconst TIER_TYPE_WL:string "WL")
+    (defconst TIER_TYPE_PUBLIC:string "PUBLIC")
     (defconst TOKEN_SPEC "token_spec"
     @doc "Payload field for token spec")
     (defconst QUOTE-MSG-KEY "quote"
     @doc "Payload field for quote spec")
     (defconst MINT_STATUS "mint-status")
-    (defconst COLLECTION_INFO "collection-info")
+    (defconst COLLECTIONS "collections")
     (defconst MINT_COMPLETED "mint-completed")
     (defconst MINT_STARTED "mint-started")  
     (defconst Account_Exists "account-exists")
     (defconst category "category")
-
+    (defconst creator "creator")
+    (defconst creator-guard "creator-guard")
+    (defconst description "description")
+    (defconst fungible "fungible")
+    (defconst mint-end-time "mint-end-time")
+    ;  (defconst mint-price 0.0)
+    (defconst mint-starts "mint-starts")
+       
+    (defconst tokens-list "tokens-list")
+    (defconst total-supply "total-supply")
+    (defconst status "status")
+    (defconst COLLECTION_STATUS_WHITELIST "COLLECTION_STATUS_WHITELIST")
+    (defconst collection-name "collection-name")
+  
 
   ; ============================================
   ; ==           Mint Functionality           ==
   ; ============================================
 
 
-  (defun mint-nft:bool
-    ( { "minter"; minter,
-      "name": nft-name,
-      "description": description,
-      "content-hash": content-hash,
-      "spec": spec,
-      "collection-name": collection-name,
-      "content-uri": content-uri,
-   }
-    )
-    (let
-      (
-        (nft (mint-params))
-      )
-
-    (bind nft
-      { 'name := nft-name
-      , 'description := description
-      , 'content-hash := content-hash
-      , 'spec := spec
-      , 'collection-name := collection-name
-      , 'owner := minter
-      , 'mint-time := mint-time
-      , 'content-uri := content-uri
-      }
-
-    (bind (get-nft-collection collection-name)
-    { 'creator := creator
-    , 'provenance-hash := provenance-hash
-    }
-
-  (let*
+ 
+  (defun admin-mint:string
     (
-      (datum-object
-        { 'name: nft-name
-        , 'description: description
-        , 'content-hash: content-hash
-        , 'spec: spec
-        , 'creator: creator
-        , 'collection-name: collection-name
-        , 'mint-time: mint-time
-        , 'content-uri: content-uri
-        , 'provenance-hash: provenance-hash
-        })
-      (minter-guard (at 'guard (ku-market.get-account minter)))
-      (datum-uri (kip.token-manifest.uri "pact:schema" "free.ku-market"))
-      (manifest-datum (kip.token-manifest.create-datum datum-uri datum-object))
-      (manifest-uri content-uri)
-      (nft-manifest (kip.token-manifest.create-manifest manifest-uri [manifest-datum]))
-      (token-id content-hash)
-      (token-precision 0)
+      collection:string 
+      account:string 
+      guard:guard
+      amount:integer
     )
-    (marmalade.ledger.create-token token-id token-precision nft-manifest ku-tk-policy)
-    (marmalade.ledger.create-account token-id minter minter-guard)
-    (marmalade.ledger.mint token-id minter minter-guard 1.0)
-  ))))
-  true
+    @doc "Requires OPS. Mints the given amount of tokens \
+    \ for the account for free."
+    (with-capability (OPS)
+      (let*
+        (
+          (collection-data (read collections collection))
+          (current-index (at "current-index" collection-data))
+          (tier (get-current-tier (at "tiers" collection-data)))
+          (tier-id (at "tier-id" tier))
+        )
+        
+        (mint-internal 
+          collection 
+          account 
+          guard
+          amount 
+          tier-id 
+          current-index
+        )
+      )
+    )
+  )
+
+  (defun mint:bool 
+    (
+      collection:string 
+      account:string 
+      amount:integer
+    )
+    @doc "Mints the given amount of tokens for the account. \
+    \ Gets the current tier and tries to mint from it. \
+    \ If the tier is a whitelist, checks that the account is whitelisted \
+    \ and that the mint count is wthin the limit. \
+    \ If the tier is public, it allows anyone to mint."
+    (enforce (> amount 0) "Amount must be greater than 0")
+
+    (with-capability (MINT)
+      (with-read collections collection
+        { "current-index":= current-index
+        , "total-supply":= total-supply
+        , "fungible":= fungible:module{fungible-v2}
+        , "bank-account":= bank-account:string
+        , "bank-guard":= bank-guard
+        , "tiers":= tiers
+        }
+        (enforce 
+          (<= (+ (- current-index 1) amount) total-supply) 
+          "Can't mint more than total supply"
+        )
+
+        (bind (get-current-tier tiers)
+          { "cost":= cost
+          , "tier-type":= tier-type
+          , "tier-id":= tier-id
+          , "limit":= mint-limit
+          }
+          (let 
+            (
+              (mint-count (get-whitelist-mint-count collection tier-id account))
+            )  
+            ;; If the tier is public, anyone can mint
+            ;; If the mint count is -1, the account is not whitelisted
+            (enforce 
+              (or 
+                (= tier-type TIER_TYPE_PUBLIC)
+                (!= mint-count -1)
+              )
+              "Account is not whitelisted"
+            )
+            ;; If the mint limit is -1, there is no limit
+            ;; If the mint count is less than the limit, the account can mint
+            (enforce 
+              (or 
+                (= mint-limit -1.0)
+                (<= (+ mint-count amount) (floor mint-limit))
+              )
+              "Mint limit reached"
+            )
+
+            ;; Transfer funds if the cost is greater than 0
+            (if (> cost 0.0)
+              (fungible::transfer-create 
+                account 
+                bank-account 
+                bank-guard 
+                (* amount cost)
+              )
+              []
+            )
+
+            ;; Handle the mint
+            (if (= tier-type TIER_TYPE_WL)
+              (update-whitelist-mint-count collection tier-id account (+ mint-count amount))
+              []
+            )
+            (mint-internal 
+              collection 
+              account 
+              (at "guard" (fungible::details account)) 
+              amount
+              tier-id 
+              current-index
+            )
+          )
+        )
+      )
+    )
+  )
+
+  (defun mint-internal:bool
+    (
+      collection:string 
+      account:string 
+      guard:guard
+      amount:integer
+      tier-id:string
+      current-index:integer
+    )
+    (require-capability (MINT))  
+
+    (update collections collection 
+      { "current-index": (+ current-index amount) }
+    )
+    (map 
+      (mint-token collection account guard) 
+      (map (+ current-index) (enumerate 0 (- amount 1)))
+    )
+    (emit-event (MINT_EVENT collection tier-id account amount))
+  )
+
+  (defun mint-token:string 
+    (
+      collection:string 
+      account:string 
+      guard:guard
+      token-id:integer
+    )
+    @doc "Mints a single token for the account."
+    (require-capability (MINT))
+    (insert minted-tokens (get-mint-token-id collection token-id)
+      { "collection": collection
+      , "account": account
+      , "guard": guard
+      , "token-id": token-id
+      , "hash": ""
+      , "revealed": false
+      }
+    )
+  )
+
+(defschema token-data
+  @doc "The information necessary to mint the token on marmalade"
+  precision:integer
+  scheme:string 
+  data:string
+  datum:object 
+  policy:module{kip.token-policy-v1}
 )
 
-(defun create-account:bool
-  ( params:object{create-account-params}
+(defschema in-token-data
+  @doc "The information necessary to mint the token on marmalade"
+  scheme:string 
+  data:string
+  datum:object
+)
+
+(defun create-marmalade-token:string 
+  (
+    account:string
+    guard:guard 
+    mint-token-id:string
+    t-data:object{token-data}
   )
-  (enforce-guard OPS)
-  (bind params 
-    { 'owner := owner 
-    , 'guard := guard  
-    }
-  (with-default-read accounts owner
-    { 'active: false 
-    }
-    { 'active := active 
-    }
-    (enforce (not active) Account_Exists)
-    (with-capability (CREATE_ACCOUNT owner)
-      (enforce-guard guard)
-      (write accounts owner 
-        { 'owner: owner 
-        , 'active: true 
-        , 'guard: guard 
-        }))))
-  true
-)  
+  @doc "Requires Private OPS. Creates the token on marmalade using the supplied data"
+  (require-capability (OPS_INTERNAL))
 
-  ; ============================================
-  ; ==             Policies                   ==
-  ; ============================================
+  (bind t-data
+    { "precision":= precision
+    , "scheme":= scheme
+    , "data":= data
+    , "datum":= datum
+    , "policy":= policy
+    }
+    (let*
+      (
+        (uri (kip.token-manifest.uri scheme data))
+        (datum-complete (kip.token-manifest.create-datum uri datum))
+        (manifest (kip.token-manifest.create-manifest uri [datum-complete]))
+        (token-id (concat ["t:" (at "hash" manifest)]))
+      )
+      (update minted-tokens mint-token-id
+        { "revealed": true
+        , "hash": (at "hash" manifest)
+        }
+      )
 
-  (defun enforce-mint:bool
-    ( token:object{token-info}
-      account:string
-      guard:guard
-      amount:decimal
+      (marmalade.ledger.create-token 
+        token-id
+        precision
+        manifest
+        policy
+      )
+      ;  (install-capability (marmalade.ledger.MINT token-id account 1.0))
+      (marmalade.ledger.mint
+        token-id
+        account
+        guard
+        1.0
+      )
+      token-id
     )
-    (enforce-marmalade-ledger)
-    (require-capability (OPS))
   )
+)
 
-  (defun enforce-marmalade-ledger:bool ()
-    (enforce-guard (marmalade.ledger.ledger-guard))
+(defun get-unrevealed-tokens:object{minted-token} ()
+  @doc "Returns a list of unrevealed tokens."
+  (select minted-tokens (where "revealed" false))
+)
+
+(defun reveal-token:string 
+  (
+    m-token:object{minted-token}
+    t-data:object{in-token-data}
+    precision:integer
+    policy:module{kip.token-policy-v1}
   )
-
-  (defun enforce-burn:bool
-    ( token:object{token-info}
-      account:string
-      amount:decimal
-    )
-    (enforce-marmalade-ledger)
-    (enforce false "Burn is not allowed")
-  )
-
-  (defun enforce-sale-pact:bool (sale:string)
-    "Enforces that SALE is id for currently executing pact"
-    (enforce (= sale (pact-id)) "Invalid pact/sale id")
-  )
-
-  (defun enforce-buy:bool
-    ( token:object{token-info}
-      seller:string
-      buyer:string
-      buyer-guard:guard
-      amount:decimal
-      sale-id:string )
-    (enforce-ledger)
-    (enforce-sale-pact sale-id)
-    (bind (get-policy token)
-      { 'fungible := fungible:module{fungible-v2}
-      , 'creator:= creator:string
-      , 'royalty-rate:= royalty-rate:decimal
+  @doc "Requires OPS. Reveals the token for the given account."
+  (with-capability (OPS)
+    (bind m-token
+      { "collection":= collection
+      , "token-id":= token-id
+      , "account":= account
+      , "guard":= guard
       }
-      (with-read quotes sale-id { 'id:= qtoken, 'spec:= spec:object{quote-spec} }
-        (enforce (= qtoken (at 'id token)) "incorrect sale token")
-        (bind spec
-          { 'price := price:decimal
-          , 'recipient := recipient:string
+
+      (create-marmalade-token 
+        account 
+        guard 
+        (get-mint-token-id collection token-id)
+        (+ 
+          t-data 
+          { "precision": precision
+          , "policy": policy
           }
-          (let* ((sale-price:decimal (* amount price))
-                 (royalty-payout:decimal
-                    (floor (* sale-price royalty-rate) (fungible::precision)))
-                 (payout:decimal (- sale-price royalty-payout)) )
-            (if
-              (> royalty-payout 0.0)
-              (fungible::transfer buyer creator royalty-payout)
-              "No royalty")
-            (fungible::transfer buyer recipient payout)))
-            true
-        ))
-  )
-
-  (defun enforce-offer:bool
-    ( token:object{token-info}
-      seller:string ; unused
-      amount:decimal
-      sale-id:string
+        )
+      )
     )
-    (enforce (= 1.0 amount) EXC_INVALID_TOKEN_AMOUNT)
-    (enforce-marmalade-ledger)
-    (enforce-sale-pact sale-id)
-    (let* ( (spec:object{quote-spec} (read-msg QUOTE-MSG-KEY))
-            (fungible:module{fungible-v2} (at 'fungible spec) )
-            (price:decimal (at 'price spec))
-            (recipient:string (at 'recipient spec))
-            (recipient-guard:guard (at 'recipient-guard spec))
-            (recipient-details:object (fungible::details recipient))
-            (sale-price:decimal (* amount price)) )
-      (fungible::enforce-unit sale-price)
-      (enforce (< 0.0 price) "Offer price must be positive")
-      (enforce (=
-        (at 'guard recipient-details) recipient-guard)
-        "Recipient guard does not match")
-      (insert quotes-table sale-id { 'id: (at 'id token), 'spec: spec })
-      (emit-event (QUOTE sale-id (at 'id token) amount price sale-price spec))
-    )
-    true
   )
+)
 
-  (defun enforce-transfer:bool
-    ( token:object{token-info}
-      sender:string
-      guard:guard
-      receiver:string
-      amount:decimal
-    )
-    (enforce (= 1.0 amount) EXC_INVALID_TOKEN_AMOUNT)
-    (enforce-marmalade-ledger)
-    true
+(defun get-mint-token-id:string 
+  (
+    collection:string 
+    token-id:integer
   )
-
-  (defun enforce-crosschain:bool
-    ( token:object{token-info}
-      sender:string
-      guard:guard
-      receiver:string
-      target-chain:string
-      amount:decimal
-    )
-    (enforce (= 1.0 amount) EXC_INVALID_TOKEN_AMOUNT)
-    (enforce-marmalade-ledger)
-    (enforce false "xtransfer prohibited")
-  )
-
-  
-  
+  (concat [collection "|" (int-to-str 10 token-id)])
+)
 
   ; ============================================
   ; ==             Whitelisting               ==
   ; ============================================
 
-  (defun reserve-admin:string (collection-name:string account:string)
-   @doc "Reserves an NFT from the collection if possible."
-
-   (with-capability (OPS)
-     (reserve-internal collection-name account 1.0)
-   )
- )
-
- (defun reserve:string (collection-name:string account:string)
-    @doc "Reserves an NFT from the collection if possible."
-
-    (with-capability (RESERVE)
-      (reserve-internal collection-name account 0.0)
-    )
-  )
-
- (defun reserve-free:string (collection-name:string account:string)
-   @doc "Reserves for free, if the account has available free mints"
-   (with-capability (RESERVE)
-     (let
-       (
-         (avail:decimal
-           (free.ku-whitelist.get-available-free collection-name account))
-       )
-       (enforce (> avail 0.0) "No available free mints.")
-       (free.ku-whitelist.decrement-available-free-with-owner
-         collection-name account 1.0)
-       (reserve-internal collection-name account 1.0)
-     )
-   )
- )
-
- (defun reserve-internal:string
+  (defun add-whitelist-to-collection
     (
-      COLLECTION_INFO:string
-      account:string
+      collection:string 
+      tier-data:[object{tier-whitelist-data}]
     )
-    @doc "Private function for reservation"
-
-    (require-capability (RESERVE))
-
-    (with-read collection-info COLLECTION_INFO
-      { "provenance-hash": provenance,
-      "tokens-list": tokens-list,
-      "creator": creator,
-      "creator-guard": creator-guard,
-      "total-supply": total-supply,
-      "mint-starts": mint-starts,
-      "mint-end-time": mint-end-time,
-      "whitelist-mint-time": whitelist-mint-time,
-      "royalty-receiver": royalty-receiver,
-      "royalty-rate": royalty-rate,
-      "mint-price": mint-price,
-      "name": name,
-      "description": description,
-      "category": category,
-      "mint-number": mint-number,
-      "fungible": fungible
-      }
-      (enforce (>= (curr-time) mint-starts) "The mint hasn't started yet")
-      (enforce (< mint-number total-supply) "Can't mint more than total supply")
-      (enforce (<= (curr-time) mint-end-time) "Cannot reserve from a closed collection")
-
-      (if (= status COLLECTION_STATUS_WHITELIST)
-        (free.ku-whitelist.enforce-whitelisted collection-name account)
-        []
-      )
-      (if (= status COLLECTION_STATUS_WHITELIST_FREE)
-        [
-          (free.ku-whitelist.enforce-whitelisted collection-name account)
-          (enforce (= discount 1.0) "Free must be free")
-        ]
-        []
-      )
-
+    @doc "Requires OPS. Adds the accounts to the whitelist for the given tier."
+    (with-capability (OPS)
       (let
         (
-          (mint-price:decimal
-            (*
-              (- 1.0 discount)
-              (at "mint-price" (get-current-price-for-collection mint-number payouts))
+          (handle-tier-data 
+            (lambda (tier-data:object{tier-whitelist-data})
+              (let
+                (
+                  (tier-id (at "tier-id" tier-data))
+                  (whitelist (at "accounts" tier-data))
+                )
+                (map (add-to-whitelist collection tier-id) whitelist)
+              )   
             )
           )
-          (id:string (format "{}" [(floor mint-number)]))
         )
-
-        (if (> mint-price 0.0)
-          (fungible::transfer account creator royalty-payout)
-          []
-        )
-
-        ; Use the current supply minted as an id and insert into reservations
-        (let
-          (
-            (r:object{reservation}
-                { "collection": collection-name
-              , "id": id
-              , "account": account
-              , "minted": false
-              }
-            )
-          )
-          (insert reservations
-            (get-id collection-name id)
-            r
-          )
-
-          (emit-event (RESERVED r))
-
-          ; Increment the supply minted
-          (update collection-info collection-name
-            { "mint-number": (+ mintnumber 1.0) }
-          )
-        )
+        (map (handle-tier-data) tier-data)
       )
     )
   )
+
+(defun add-whitelist-to-tier:[string] 
+(
+  collection:string 
+  tier-data:object{tier-whitelist-data}
+)
+@doc "Requires OPS. Adds the accounts to the whitelist for the given tier."
+(with-capability (OPS)
+  (let
+    (
+      (tier-id (at "tier-id" tier-data))
+      (whitelist (at "whitelist" tier-data))
+    )
+    (map (add-to-whitelist collection tier-id) whitelist)
+  )
+)
+)
+
+(defun add-to-whitelist:string 
+(
+  collection:string 
+  tier-id:string
+  account:string 
+)
+@doc "Requires private OPS. Adds the account to the whitelist for the given tier."
+(require-capability (OPS))
+
+(insert whitelist-table (concat [collection ":" tier-id ":" account])
+  { 
+    "tier-id": tier-id
+  , "account": account
+  ,  "mint-count": 0
+  }
+)
+)
+
+(defun is-whitelisted:bool 
+(
+  collection:string 
+  tier-id:string 
+  account:string
+)
+@doc "Returns true if the account is whitelisted for the given tier."
+(let
+  (
+    (whitelist-id (get-whitelist-id collection tier-id account))
+  )
+  (with-default-read whitelist-table whitelist-id
+    { "mint-count": -1 }
+    { "mint-count":= mint-count }
+    (!= mint-count -1)
+  )
+)
+)
+
+(defun get-whitelist-mint-count:integer
+(
+  collection:string 
+  tier-id:string 
+  account:string
+)
+(let
+  (
+    (whitelist-id (get-whitelist-id collection tier-id account))
+  )
+  (with-default-read whitelist-table whitelist-id
+    { "mint-count": -1 }
+    { "mint-count":= mint-count }
+    mint-count
+  )
+)
+)
+
+(defun get-whitelist-id:string 
+(
+  collection:string 
+  tier-id:string 
+  account:string
+)
+(concat [collection ":" tier-id ":" account])
+)
+
+(defun update-whitelist-mint-count 
+(
+  collection:string 
+  tier-id:string 
+  account:string 
+  count:integer
+)
+@doc "Requires Whitelist Update. Updates the mint count for the given account in the whitelist."
+(require-capability (WHITELIST_UPDATE))
+
+(let
+  (
+    (whitelist-id (get-whitelist-id collection tier-id account))
+  )
+  (update whitelist-table whitelist-id
+    { "mint-count": count }
+  )
+)
+)
 
   ; ============================================
   ; ==         Get Detail Functions           ==
   ; ============================================
 
-; Look up all collection details.  Query with /local
-  (defun get-details:object{collection-schema} ()
-  (read collection-info COLLECTION_INFO)
- )
 
- ; Look up NFT collection by name.  Query with /local
- (defun get-nft-collection:object{collection-schema}
-     ( name:string
+  (defun get-current-tier-for-collection:object{tier} (collection:string)
+    @doc "Gets the current tier for the collection"
+    (with-read collections collection
+      { "tiers":= tiers}
+      (get-current-tier tiers)
+    )
+  )
+
+  (defun get-current-tier:object{tier} (tiers:[object:{tier}])
+    @doc "Gets the current tier from the list based on block time"
+    (let*
+      (
+        (now (at "block-time" (chain-data)))
+        (filter-tier
+          (lambda (tier:object{tier})
+            (if (= (at "start-time" tier) (at "end-time" tier)) 
+              (>= now (at "start-time" tier))  
+              (and? 
+                (<= (at "start-time" tier))
+                (> (at "end-time" tier))
+                now
+              )
+            )
+          )
+        )
+        (filtered-tiers (filter (filter-tier) tiers))
+      )
+      (enforce (> (length filtered-tiers) 0) (format "No tier found: {}" [now]))
+      (at 0 filtered-tiers)
+    )
+  )
+
+  (defun get-unrevealed-tokens-for-collection:[object:{minted-token}] 
+    (
+      collection:string
+    )
+    @doc "Returns a list of unrevealed tokens."
+    (select minted-tokens 
+      (and? 
+        (where "revealed" (= false))
+        (where "collection" (= collection))
+      )
+    )
+  )
+
+  (defun get-owned:[object:{minted-token}] 
+    (
+      account:string
+    )
+    @doc "Returns a list of tokens owned by the account."
+    (select minted-tokens (where "account" (= account)))
+  )
+
+  (defun get-owned-for-collection:[object:{minted-token}] 
+    (
+      account:string
+      collection:string
+    )
+    @doc "Returns a list of tokens owned by the account."
+    (select minted-tokens 
+      (and? 
+        (where "account" (= account))
+        (where "collection" (= collection))
+      )
+    )
+  )
+
+  (defun get-all-nft ([object:{minted-token}])
+        @doc "Returns a list of all tokens."
+    (keys minted-tokens)
      )
-     (read collection-info name)
+
+     (defun get-col-owner:object{collection} (creator-guard:guard)
+     (select collections
+      (where "creator-guard" (= creator-guard)
+      )
+     ))
+
+  (defun get-wl-collection ([object:{whitelisted}])
+    @doc "pull list of whitelist ID's for all collections." 
+        (keys whitelist-table)
+  )
+
+  (defun get-wl-by-name:[object:{whitelisted}]
+    (collection:string)
+    @doc "Returns list of whitelist ID's by collection name."
+      (select whitelist-table
+        (where "collection" (= collection)))
+    )
+
+(defun get-collection-data:object{collection} (collection:string)
+  (read collections collection)
+)
+
+(defun get-all-collections:object{collection} ()
+  @doc "Returns a list of all collections."    
+  (keys collections)
+)
+(defconst name "name")
+
+(defun get-all-collections2:object{collection}  (name:list)
+  (if 
+    (> (length name) 0)
+    (read collections name))
+)
+
+(defun get-all-collections1:string (name:[object:{collections}])
+  (select collections 
+    (where "name" (= name))) 
+)
+
+       (defun get-all-collections3 () 
+     (select collections (constantly true))
    )
 
-   (defun get-category:object{collection-schema} (name:string)
-    (with-read collection-info COLLECTION_INFO {
+(defun get-collection-uri:string (collection:string)
+  (at "root-uri" (read collections collection ["root-uri"]))
+)
+
+(defun get-total-supply-for-collection:decimal (collection:string)
+(at "total-supply" (read collections collection ["total-supply"]))
+)
+
+(defun get-current-index-for-collection:integer (collection:string)
+(at "current-index" (read collections collection ["current-index"]))
+)
+
+(defun get-bank-for-collection:string (collection:string)
+(at "bank-account" (read collections collection ["bank-account"]))
+)
+
+; Look up all collection details.  Query with /local
+  (defun get-details()
+  (keys collections)
+)
+
+
+
+; Look up NFT collection by name.  Query with /local
+(defun get-nft-collection:object{collection}
+    ( name:string
+    )
+    (read collections name)
+  )
+
+  (defun get-category:object{collection} (name:string)
+    (with-read collections COLLECTIONS {
       'category:= category
     }
     category
     )
     )
 
-; Look up collection royalty receiver.  Query with /local
-(defun get-payee:object{collection-schema} ()
-  (with-read collection-info COLLECTION_INFO {
-    'royalty-receiver:= royalty-receiver
-  }
-  royalty-receiver
-  )
-  )
-
-  (defun get-current-price-for-collection:decimal (name:string)
-  (with-read collection-info COLLECTION_INFO {
-    'mint-price:= mint-price
-  }
-  mint-price
-  )
-  )
-
-   (defun get-all-reservations:[object{reservation}] ()
-    (select reservations (constantly true))
-  )
-
-  (defun get-account:object{account}
-    ( owner:string ; k:account
-    )
-    (with-default-read accounts owner
-      { 'active: false 
-      , 'guard: false 
-      }
-      { 'active := active 
-      , 'guard := guard 
-      }
-      (enforce active EXC_ACCOUNT_NOT_FOUND)
-      { 'owner: owner 
-      , 'active: active 
-      , 'guard: guard 
-      })
-  )
-
-  (defun get-reservation:object{reservation} 
-    (collection-name:string id:string)
-    (read reservations (get-id collection-name id))
-  )
-
-  (defun get-unminted-reservations:[object{reservation}] ()
-    (select reservations (where "minted" (= false)))
-  )
-
-  (defun get-reservations-for-account:[object{reservation}] 
-    (account:string)
-    (select reservations (where "account" (= account)))  
-  )
-
-   
-
   )
 
 
 (if (read-msg "upgrade")
-["Upgrade Complete"]
+"Upgrade Complete"
 [
-  (create-table free.ku-market.accounts)
-  (create-table free.ku-market.collection-info)
-  (create-table free.ku-market.reservations)
-  (create-table free.ku-market.account-details)
-  (create-table free.ku-market.metadata)
-  (create-table free.ku-market.manifest-datum)
-  (create-table free.ku-market.quotes)
-  (create-table free.ku-market.mint-status)
-  (create-table free.ku-market.mintp)
-  (create-table free.ku-market.account-params)
-
-  
+  (create-table free.ku-market.collections)
+  (create-table free.ku-market.minted-tokens)
+  (create-table free.ku-market.whitelist-table)
+  (create-table free.ku-market.tiers)
+  (create-table free.ku-market.tdata)
+  (create-table free.ku-market.tier-data)
 ]
-["no init needed"])
+)

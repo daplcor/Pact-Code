@@ -1,0 +1,128 @@
+(load "./kda-env/init.repl")
+
+(begin-tx "Setup contract")
+
+(env-keys ["ku-admin", "ku-ops"])
+(env-data 
+  { 
+    "ku-admin": { "keys": ["gov"], "pred": "="},
+    "ku-ops": { "keys": ["ops"], "pred": "="},
+    "upgrade": false
+  })
+
+(load "ku-market.pact")
+
+(commit-tx)
+
+(begin-tx "Test details")
+
+(env-data
+ { 'bob-guard: ["bob"]
+ , 'alice-guard: ["alice"]
+ , 'mint-guard: ["mint"]
+ , 'burn-guard: ["burn"]
+ , 'sale-guard: ["sale"]
+ , 'transfer-guard: ["transfer"]
+ })
+(env-keys ["bob"])
+(use marmalade.ledger)
+
+(env-sigs [
+  { 'key: "bob"
+  , 'caps:
+    [
+     (MINT "project-0" "bob" 5.0),
+     (TRANSFER "project-0" "bob" "alice" 2.0),
+     (TRANSFER "project-0" "bob" "project-0:1" 1.0),
+     (TRANSFER "project-0:1" "bob" "alice"  0.000000002),
+     (MINT "project-0:1" "bob" 1.0)
+    ]
+  },
+  {
+    'key: "project-0:1",
+    'caps: [
+     (MINT "project-0:1" "bob" 1.0)
+    ]
+  },
+  {
+    'key: "alice",
+    'caps: [
+      (TRANSFER "project-0:1" "alice" "project-0:1:1" 1.0)
+      (MINT "project-0" "alice" 5.0)
+    ]
+  },
+  { 'key: "mint", 'caps: [] },
+  { 'key: "transfer", 'caps: [] }
+  ])
+
+(use kip.token-manifest)
+
+(expect-failure
+  "bob creates a new token project-0 before initialization"
+  "Manifest is not valid"
+  (create-token
+    "project-0"
+    12
+    {"uri": (uri "text" "project-0-uri"),
+     "hash": "wrong-hash",
+     "data": []}
+    marmalade.guard-token-policy)
+  )
+
+(expect
+  "bob creates a new token project-0"
+  true
+  (create-token
+    "project-0"
+    12
+    (create-manifest (uri "text" "project-0-uri") [])
+    marmalade.guard-token-policy)
+  )
+
+(expect
+  "bob mints a 5.0 of token"
+  true
+  (mint "project-0" "bob" (read-keyset 'bob-guard) 5.0))
+
+(expect
+  "total supply of project-0"
+  5.0
+  (total-supply "project-0"))
+
+(expect "MINT events"
+  [{"name": "marmalade.ledger.TOKEN","params": ["project-0" 12 0.0 marmalade.guard-token-policy]}
+  ,{"name": "marmalade.ledger.MINT","params": ["project-0" "bob" 5.0]}
+  ,{"name": "marmalade.ledger.ACCOUNT_GUARD","params": ["project-0" "bob" (read-keyset 'bob-guard) ]}
+  ,{"name": "marmalade.ledger.RECONCILE","params": ["project-0" 5.0
+    {"account": "","current": 0.0,"previous": 0.0}
+    {"account": "bob","current": 5.0,"previous": 0.0}]}
+  ,{"name": "marmalade.ledger.SUPPLY","params": ["project-0"  5.0]}]
+  (map (remove 'module-hash) (env-events true)))
+
+;;regular transfer
+(expect "Bob transfers 2.0 to Alice"
+  true
+  (transfer-create "project-0" "bob" "alice" (read-keyset 'alice-guard) 2.0))
+
+(env-sigs [
+  { 'key: "bob"
+  , 'caps:
+    [ (marmalade.ledger.XTRANSFER "project-0" "bob" "alice" "2" 2.0)]
+  }])
+
+(expect-failure
+  "Unsupported cross chain transfer fails"
+  "cross chain not supported"
+  (transfer-crosschain "project-0" "bob" "alice" (read-keyset 'alice-guard) "2" 2.0))
+
+(expect "TRANSFER event"
+   [{"name": "marmalade.ledger.TRANSFER","params": ["project-0" "bob" "alice" 2.0]},
+    {"name": "marmalade.ledger.ACCOUNT_GUARD","params": ["project-0" "alice" (read-keyset 'alice-guard )]},
+    {"name": "marmalade.ledger.RECONCILE","params": ["project-0" 2.0
+      {"account": "bob","current": 3.0,"previous": 5.0}
+      {"account": "alice","current": 2.0,"previous": 0.0}]}]
+  (map (remove 'module-hash) (env-events true)))
+
+  ()
+
+(commit-tx)

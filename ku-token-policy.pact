@@ -13,9 +13,15 @@
     (compose-capability (OPS_INTERNAL))
   )
 
+  (defcap KU_SALE ()
+      true)
+
   (defcap OPS_INTERNAL ()
     true
   )
+
+  (implements kip.token-policy-v1)
+    (use kip.token-policy-v1 [token-info])
 
   (defcap QUOTE:bool
     ( sale-id:string
@@ -24,6 +30,7 @@
       price:decimal
       sale-price:decimal
       royalty-payout:decimal
+      platform-payout:decimal
       creator:string
       spec:object{quote-spec}
     )
@@ -31,10 +38,6 @@
     @event
     true
   )
-
-(implements kip.token-policy-v1)
-  
-(use kip.token-policy-v1 [token-info])
 
 (defschema quote-spec
   @doc "Quote data to include in payload"
@@ -47,9 +50,11 @@
   id:string
   spec:object{quote-spec})
 
+  
 (deftable quotes:{quote-schema})
 
 (defschema policy-schema
+  id:string
   fungible:module{fungible-v2}
   creator:string
   creator-guard:guard
@@ -57,6 +62,7 @@
   max-supply:decimal
   min-amount:decimal
   royalty-rate:decimal
+  collection:string
 )
 
 (deftable policies:{policy-schema})
@@ -66,6 +72,12 @@
 
   (defconst QUOTE-MSG-KEY "quote"
     @doc "Payload field for quote spec")
+
+    (defconst ROYALTY_SPEC "royalty_spec"
+      @doc "Payload field for royalty spec")
+      
+      (defconst PLATFORM_SPEC "platform_spec"
+      @doc "Payload field for platform spec")
 
 ; ============================================
 ; ==             Policies                   ==
@@ -87,6 +99,7 @@
           (max-supply:decimal (at 'max-supply spec))
           (min-amount:decimal (at 'min-amount spec))
           (royalty-rate:decimal (at 'royalty-rate spec))
+          (platform-rate:decimal (at 'platform-rate spec))
           (creator-details:object (fungible::details creator ))
           )
     (enforce (>= min-amount 0.0) "Invalid min-amount")
@@ -97,16 +110,31 @@
     (enforce (and
       (>= royalty-rate 0.0) (<= royalty-rate 1.0))
       "Invalid royalty rate")
+      (enforce (and
+        (>= platform-rate 0.0) (<= platform-rate 1.0))
+        "Invalid Platform rate")
     (insert policies (at 'id token)
       { 'fungible: fungible
       , 'creator: creator
       , 'creator-guard: creator-guard
+      , 'id: (at 'id token)
       , 'mint-guard: mint-guard
       , 'max-supply: max-supply
       , 'min-amount: min-amount
-      , 'royalty-rate: royalty-rate }))
+      , 'royalty-rate: royalty-rate
+      , 'platform-rate: platform-rate
+      , 'collection: (get-collection token)
+    }))
   true
 )
+
+(defun get-token-collection (token:object{token-info})
+      (at "collection" (at "datum" (at 0 (at "data" (at "manifest" token)))))
+    )
+
+    (defun get-collection-tokens (collection:string)
+        (select policies ['id] (where 'collection (= collection)))
+    )
 
   (defun enforce-ledger:bool 
     ()
@@ -152,6 +180,7 @@
     (bind (get-policy token)
       { 'fungible := fungible:module{fungible-v2}
        ,'royalty-rate:= royalty-rate:decimal
+       ,'platform-rate:= platform-rate:decimal
        ,'creator:= creator:string
       }
     (let* ( (spec:object{quote-spec} (read-msg QUOTE-MSG-KEY))
@@ -161,14 +190,16 @@
             (recipient-details:object (fungible::details recipient))
             (sale-price:decimal (* amount price))
             (royalty-payout:decimal
-               (floor (* sale-price royalty-rate) (fungible::precision))) )
+               (floor (* sale-price royalty-rate) (fungible::precision)))
+               (platform-rate:decimal (if (try false (read-msg "KU_SALE")) (floor (* sale-price 0.9) (fungible::precision)) 0.0))
+               )
       (fungible::enforce-unit sale-price)
       (enforce (< 0.0 price) "Offer price must be positive")
       (enforce (=
         (at 'guard recipient-details) recipient-guard)
         "Recipient guard does not match")
       (insert quotes sale-id { 'id: (at 'id token), 'spec: spec })
-      (emit-event (QUOTE sale-id (at 'id token) amount price sale-price royalty-payout creator spec)))
+      (emit-event (QUOTE sale-id (at 'id token) amount price sale-price (+ royalty-payout platform-rate) creator spec)))
       true
   )
   )
@@ -187,6 +218,7 @@
       { 'fungible := fungible:module{fungible-v2}
       , 'creator:= creator:string
       , 'royalty-rate:= royalty-rate:decimal
+      , 'platform-rate:= platform-rate:decimal
       }
       (with-read quotes sale-id { 'id:= qtoken, 'spec:= spec:object{quote-spec} }
         (enforce (= qtoken (at 'id token)) "incorrect sale token")
@@ -197,15 +229,21 @@
           (let* ((sale-price:decimal (* amount price))
                  (royalty-payout:decimal
                     (floor (* sale-price royalty-rate) (fungible::precision)))
-                 (payout:decimal (- sale-price royalty-payout)) )
+                    (platform-payout:decimal (if (try false (read-msg "KU_SALE")) (floor (* sale-price 0.9) (fungible::precision)) 0.0))
+                 (payout:decimal (- sale-price (+ platform-payout royalty-payout))) )
             (if
               (> royalty-payout 0.0)
               (fungible::transfer buyer creator royalty-payout)
               "No royalty")
+              (if
+                (> platform-rate 0.0)
+                (fungible::transfer buyer creator platform-payout royalty-payout)
+                "No comission")  
             (fungible::transfer buyer recipient payout)))
-            true
+           true
         ))
   )
+  
 
   (defun enforce-sale-pact:bool (sale:string)
     "Enforces that SALE is id for currently executing pact"

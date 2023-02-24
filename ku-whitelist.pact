@@ -1,7 +1,7 @@
 (namespace "free")
 
-(define-keyset "free.ku-wl-admin" (read-keyset "ku-wl-admin"))
 (define-keyset "free.ku-wl-ops" (read-keyset "ku-wl-ops"))
+(define-keyset "free.ku-wl-admin" (read-keyset "ku-wl-admin"))
 
 (module ku-whitelist GOVERNANCE
     @doc "Forked from Luzzotica whitelist"
@@ -178,5 +178,10 @@
     (concat [collection "|" account])
   )
 )
+
+(if (read-msg 'upgrade)
+  ["upgrade complete"]
+  [ (create-table free.ku-whitelist.whitelisted) ])
+
 
 
