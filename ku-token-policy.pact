@@ -128,6 +128,10 @@
   true
 )
 
+(defun get-collection (token:object{token-info})
+      (at "collection" (at "datum" (at 0 (at "data" (at "manifest" token)))))
+    )
+
 (defun get-token-collection (token:object{token-info})
       (at "collection" (at "datum" (at 0 (at "data" (at "manifest" token)))))
     )
@@ -277,11 +281,11 @@
 )
 
 (if (read-msg "upgrade")
-["Upgrade Complete"]
+"Upgrade Complete"
 [
   (create-table free.ku-tk-policy.quotes)
   (create-table free.ku-tk-policy.policies)
 ]
-["no init needed"])
+)
 
 

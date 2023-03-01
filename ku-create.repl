@@ -1,0 +1,91 @@
+(load "kda-env/init.repl")
+
+(begin-tx "Load in the nft environment")
+
+(env-keys ["ku-admin" "ku-ops"])
+(env-data
+  {
+    "ku-admin": {
+      "keys": [
+        "ku-admin"
+      ],
+      "pred": "keys-any"
+    },
+    "ku-ops": {
+      "keys": [
+        "ku-ops"
+      ],
+      "pred": "keys-any"
+    },
+    "ku-bank": {
+      "keys": [
+        "ku-bank"
+      ],
+      "pred": "keys-any"
+    },
+    "bank-guard": {
+      "keys": [
+        "ku-admin"
+      ],
+      "pred": "keys-all"
+    },
+    "creatorGuard": {
+        "keys": [ "creatorGuard" ],
+        "pred": "keys-any"
+      },
+    "collection": {
+      "name": "test-collection",
+      "totalSupply": 15.0,
+      "provenance": "abc",
+      "category": "Artwork",
+      "creator": "sally",
+      "creatorGuard": {
+        "keys": [ "creatorGuard" ],
+        "pred": "keys-any"
+      },
+      "description": "test-description",
+      "rootUri": "https://example.com",
+      "tiers": [
+         {
+          "tierId": "public",
+          "tierType": "PUBLIC",
+          "startTime": {"time": "2023-01-03T00:00:00Z"},
+          "endTime": {"time": "2024-01-03T00:00:00Z"},
+          "cost": 50.0,
+          "limit": -1.0
+        }
+      ]
+    },
+    "collection-name": "test-collection",
+    "tier-data": [
+      {
+        "tier-id": "free",
+        "accounts": ["bob"]
+      },
+      {
+        "tier-id": "discount",
+        "accounts": ["bob", "alice"]
+      }
+    ],
+    "can-offer": true,
+    "can-buy": true,
+    "can-transfer": true,
+    "can-burn": true,
+    "can-xchain": true,
+    "upgrade": false
+  }
+)
+
+(load "ku-create.pact")
+(load "ku-token-policy.pact")
+
+
+(commit-tx)
+
+;  (begin-tx "create collection")
+;  (free.ku-create.create-collection (read-msg 'collection)coin)
+;  (commit-tx)
+
+;  (begin-tx "mint token")
+;  (free.ku-create.mint "test-collection" "bob" 1)
+;  (commit-tx)
