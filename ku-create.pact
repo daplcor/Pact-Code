@@ -12,19 +12,13 @@
     )
 
     (defcap OPS()
-    (enforce-guard (keyset-ref-guard "free.ku-ops" ))
+    (enforce-guard (keyset-ref-guard "free.ku-ops"))
     (compose-capability (OPS_INTERNAL))
     )
 
   (defcap CREATECOL()
   true
   )
-
-  (defcap EDITCOL (creatorGuard:guard) 
-  @managed
-  (bind (get-col-owner creatorGuard) (enforce-guard creatorGuard))
-)
-
 
   (defcap EDIT()
   (compose-capability (OPS))
@@ -618,8 +612,8 @@ true
       collection:string 
       tier-data:[object{tier-whitelist-data}]
     )
-    @doc "Requires OPS. Adds the accounts to the whitelist for the given tier."
-    (with-capability (WLMOD)
+    @doc "Requires creator guard. Adds the accounts to the whitelist for the given tier."
+    (with-capability (WHITELIST collection)
       (let
         (
           (handle-tier-data 
@@ -644,8 +638,8 @@ true
   collection:string 
   tier-data:object{tier-whitelist-data}
 )
-@doc "Requires OPS. Adds the accounts to the whitelist for the given tier."
-(with-capability (WLMOD)
+@doc "Requires creator guard. Adds the accounts to the whitelist for the given tier."
+(with-capability (WHITELIST collection)
   (let
     (
       (tierId (at "tierId" tier-data))
@@ -662,7 +656,7 @@ true
   tierId:string
   account:string 
 )
-@doc "Requires private OPS. Adds the account to the whitelist for the given tier."
+@doc "Requires creator guard. Adds the account to the whitelist for the given tier."
 (require-capability (WLMOD))
 
 (insert whitelist-table (concat [collection ":" tierId ":" account])
@@ -935,3 +929,4 @@ true
   (init)
 ]
 )
+
