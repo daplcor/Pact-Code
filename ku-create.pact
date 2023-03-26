@@ -5,7 +5,7 @@
 (define-keyset "free.ku-bank" (read-keyset "ku-bank"))
 
 (module ku-create GOVERNANCE
-  
+
     (defcap GOVERNANCE ()
     (enforce-guard (keyset-ref-guard "free.ku-admin" ))
     (compose-capability (OPS_INTERNAL))
@@ -24,30 +24,30 @@
   (compose-capability (OPS))
   (compose-capability (CREATOR))
   )
-    
+
   (defcap CREATOR()
   (enforce-guard (keyset-ref-guard "creatorGuard"))
   )
-   
+
   (defcap OPS_INTERNAL ()
   (compose-capability (MINT))
   )
-  
-  (defcap WHITELIST_UPDATE () 
+
+  (defcap WHITELIST_UPDATE ()
   true
 )
 
 
-(defcap MINT () 
+(defcap MINT ()
 (compose-capability (WHITELIST_UPDATE))
 true
 )
 
-(defcap MINT_EVENT 
+(defcap MINT_EVENT
 (
-  collection:string 
-  tierId:string 
-  account:string 
+  collection:string
+  tierId:string
+  account:string
   amount:integer
 )
 @event true
@@ -60,13 +60,24 @@ true
 	(compose-capability (WLMOD)
 ))
 
+(defcap WHITELIST:bool (collection:string)
+  (enforce
+    (or
+      (enforce-guard (at 'creatorGuard (read collections collection ['creatorGuard])) false)
+      (compose-capabilit (OPS))
+    )
+    "Must be the collection creator or have OPS capability"
+  )
+  (compose-capability (WLMOD))
+)
+
 (defcap WLMOD ()
 	true
 )
 
 
 
-  
+
 ; #################################################################
 ; #                      Schema Details                           #
 ; #################################################################
@@ -74,13 +85,13 @@ true
 ; NFT collections are stored in the nft-collections table.
   ; An NFT collection is uniquely identified by its name across all k:accounts.
   ; The creator is the k:account of the original creator.
-  ; The name is the collection name, and also its id. 
-  ; num-minted is the current number of NFTs that have been minted in this 
+  ; The name is the collection name, and also its id.
+  ; num-minted is the current number of NFTs that have been minted in this
   ; collection.
   ; max-size is the total number of NFTs in this collection.
   ; mint-price is the price to mint each NFT in this collection.
   ; mint-guard defines who can mint NFTs in this collection.
-  ; mint-royalties define who gets paid when NFTs in this collection are 
+  ; mint-royalties define who gets paid when NFTs in this collection are
   ; minted.
   ; sale-royalties define who gets paid when NFTs in this collection are sold.
   (defschema collection
@@ -90,11 +101,11 @@ true
     name:string
     totalSupply:integer
     creator:string
-    creatorGuard:guard 
+    creatorGuard:guard
     category:string
-    provenance:string 
-    rootUri:string 
-    description:string 
+    provenance:string
+    rootUri:string
+    description:string
     currentIndex:integer
     fungible:module{fungible-v2}
     tiers:[object:{tier}]
@@ -110,8 +121,8 @@ true
         hash:string
         revealed:bool
       )
-    
-   
+
+
       (defschema tier
         @doc "Stores the start time, end time, tier type (WL, PUBLIC), \
         \ tierId, cost for this tier to mint, \
@@ -123,27 +134,27 @@ true
         cost:decimal
         limit:decimal
       )
-    
+
   (defschema tier-whitelist-data
   @doc "A data structure for the whitelist data for a tier"
   tierId:string
   accounts:[string]
   )
-  
+
       (defschema whitelisted
         @doc "Stores the account of the whitelisted user, the tierId, \
         \ and amount they have minted. The id is 'collection:tierId:account'."
         account:string
-        tierId:string 
-        mint-count:integer 
+        tierId:string
+        mint-count:integer
       )
 
 
-  ; ============================================ 
+  ; ============================================
   ; ==                 Tables                 ==
   ; ============================================
 
-  
+
   (deftable collections:{collection})
   (deftable minted-tokens:{minted-token})
   (deftable whitelist-table:{whitelisted})
@@ -155,8 +166,8 @@ true
   ; ============================================
   ; ==         Initialize Collection          ==
   ; ============================================
- 
-  (defun create-collection:string 
+
+  (defun create-collection:string
     (
       collection-data:object
       fungible:module{fungible-v2}
@@ -167,7 +178,7 @@ true
       (enforce (> (at "totalSupply" collection-data) 0.0) "Total supply must be greater than 0")
       (validate-tiers (at "tiers" collection-data))
        (insert collections (at "name" collection-data)
-        (+ 
+        (+
           { "fungible": fungible
           , "currentIndex": 1
           , "totalSupply": (floor (at "totalSupply" collection-data))
@@ -179,9 +190,9 @@ true
   )
 
 
-  (defun update-collection-tiers 
+  (defun update-collection-tiers
     (
-      collection:string 
+      collection:string
       tiers:[object:{tier}]
     )
     @doc "Updates the tiers of the given collection"
@@ -192,7 +203,7 @@ true
       )
     )
   )
-  
+
 
   (defun validate-tiers:bool (tiers:[object:{tier}])
   @doc "Validates the tier start and end time, ensuring they don't overlap \
@@ -203,18 +214,18 @@ true
         (lambda (tier:object{tier} other:object{tier})
           ;; If the other is the same as the tier, don't check it
           (if (!= (at "tierId" tier) (at "tierId" other))
-            (enforce 
+            (enforce
               (or
                 ;; Start and end of other is before start of tier
-                (and? 
+                (and?
                   (<= (at "startTime" other))
-                  (<= (at "endTime" other)) 
+                  (<= (at "endTime" other))
                   (at "startTime" tier)
                 )
                 ;; Start and end of other is after end of tier
                 (and?
                   (>= (at "endTime" other))
-                  (>= (at "startTime" other)) 
+                  (>= (at "startTime" other))
                   (at "endTime" tier)
                 )
               )
@@ -224,16 +235,16 @@ true
           )
         )
       )
-      (validate-tier 
+      (validate-tier
         (lambda (tier:object{tier})
-          ;; Enforce start time is before end time, 
+          ;; Enforce start time is before end time,
           ;; and that the tier type is valid
           (enforce
-            (<= (at "startTime" tier) (at "endTime" tier)) 
+            (<= (at "startTime" tier) (at "endTime" tier))
             "Start must be before end"
           )
           (enforce
-            (or 
+            (or
               (= (at "tierType" tier) TIER_TYPE_WL)
               (= (at "tierType" tier) TIER_TYPE_PUBLIC)
             )
@@ -252,7 +263,7 @@ true
   )
 )
 
-(defun update-collection-uri 
+(defun update-collection-uri
   (
     collection:string
     uri:string
@@ -295,7 +306,7 @@ true
   (defun get-bank:string ()
     (get-bank-value BANK_ACCOUNT)
   )
-    
+
   ; ============================================
   ; ==               Constants                ==
   ; ============================================
@@ -314,7 +325,7 @@ true
     (defconst MINT_STATUS "mint-status")
     (defconst COLLECTIONS "collections")
     (defconst MINT_COMPLETED "mint-completed")
-    (defconst MINT_STARTED "mint-started")  
+    (defconst MINT_STARTED "mint-started")
     (defconst Account_Exists "account-exists")
     (defconst category "category")
     (defconst creator "creator")
@@ -336,11 +347,11 @@ true
   ; ============================================
 
 
- 
+
   (defun admin-mint:string
     (
-      collection:string 
-      account:string 
+      collection:string
+      account:string
       guard:guard
       amount:integer
     )
@@ -354,23 +365,23 @@ true
           (tier (get-current-tier (at "tiers" collection-data)))
           (tierId (at "tierId" tier))
         )
-        
-        (mint-internal 
-          collection 
-          account 
+
+        (mint-internal
+          collection
+          account
           guard
-          amount 
-          tierId 
+          amount
+          tierId
           currentIndex
         )
       )
     )
   )
 
-  (defun mint:bool 
+  (defun mint:bool
     (
-      collection:string 
-      account:string 
+      collection:string
+      account:string
       amount:integer
     )
     @doc "Mints the given amount of tokens for the account. \
@@ -389,8 +400,8 @@ true
         , "creatorGuard":= creatorGuard
         , "tiers":= tiers
         }
-        (enforce 
-          (<= (+ (- currentIndex 1) amount) totalSupply) 
+        (enforce
+          (<= (+ (- currentIndex 1) amount) totalSupply)
           "Can't mint more than total supply"
         )
 
@@ -400,15 +411,15 @@ true
           , "tierId":= tierId
           , "limit":= mint-limit
           }
-          (let* 
+          (let*
             (
               (mint-count (get-whitelist-mint-count collection tierId account))
               (bankAc (get-bank))
-              )  
+              )
             ;; If the tier is public, anyone can mint
             ;; If the mint count is -1, the account is not whitelisted
-            (enforce 
-              (or 
+            (enforce
+              (or
                 (= tierType TIER_TYPE_PUBLIC)
                 (!= mint-count -1)
               )
@@ -416,8 +427,8 @@ true
             )
             ;; If the mint limit is -1, there is no limit
             ;; If the mint count is less than the limit, the account can mint
-            (enforce 
-              (or 
+            (enforce
+              (or
                 (= mint-limit -1.0)
                 (<= (+ mint-count amount) (floor mint-limit))
               )
@@ -425,27 +436,42 @@ true
             )
 
             ;; Transfer funds if the cost is greater than 0
+            ; (if (> cost 0.0)
+            ;   (fungible::transfer
+            ;     account
+            ;     bankAc
+            ;     (* amount cost)
+            ;   )
+            ;
+            ;  []
+            ; )
+
             (if (> cost 0.0)
-              (fungible::transfer 
-                account 
-                bankAc 
-                (* amount cost)
-              )
-              
-             []
-            )
+  (let
+    (
+      (total-cost (* amount cost))
+      (creator-amount (* total-cost PERCENT_TO_CREATOR))
+      (bank-amount (- total-cost creator-amount))
+      (managed-account (get-managed-account))
+    )
+    (fungible::transfer account managed-account total-cost)
+    (fungible::transfer managed-account creator creator-amount)
+    (fungible::transfer managed-account bankAc bank-amount)
+  )
+  []
+)
 
             ;; Handle the mint
             (if (= tierType TIER_TYPE_WL)
               (update-whitelist-mint-count collection tierId account (+ mint-count amount))
               []
             )
-            (mint-internal 
-              collection 
-              account 
-              (at "guard" (fungible::details account)) 
+            (mint-internal
+              collection
+              account
+              (at "guard" (fungible::details account))
               amount
-              tierId 
+              tierId
               currentIndex
             )
           )
@@ -456,29 +482,29 @@ true
 
   (defun mint-internal:bool
     (
-      collection:string 
-      account:string 
+      collection:string
+      account:string
       guard:guard
       amount:integer
       tierId:string
       currentIndex:integer
     )
-    (require-capability (MINT))  
+    (require-capability (MINT))
 
-    (update collections collection 
+    (update collections collection
       { "currentIndex": (+ currentIndex amount) }
     )
-    (map 
-      (mint-token collection account guard) 
+    (map
+      (mint-token collection account guard)
       (map (+ currentIndex) (enumerate 0 (- amount 1)))
     )
     (emit-event (MINT_EVENT collection tierId account amount))
   )
 
-  (defun mint-token:string 
+  (defun mint-token:string
     (
-      collection:string 
-      account:string 
+      collection:string
+      account:string
       guard:guard
       token-id:integer
     )
@@ -498,23 +524,23 @@ true
 (defschema token-data
   @doc "The information necessary to mint the token on marmalade"
   precision:integer
-  scheme:string 
+  scheme:string
   data:string
-  datum:object 
+  datum:object
   policy:module{kip.token-policy-v1}
 )
 
 (defschema in-token-data
   @doc "The information necessary to mint the token on marmalade"
-  scheme:string 
+  scheme:string
   data:string
   datum:object
 )
 
-(defun create-marmalade-token:string 
+(defun create-marmalade-token:string
   (
     account:string
-    guard:guard 
+    guard:guard
     mint-token-id:string
     t-data:object{token-data}
   )
@@ -541,7 +567,7 @@ true
         }
       )
 
-      (marmalade.ledger.create-token 
+      (marmalade.ledger.create-token
         token-id
         precision
         manifest
@@ -564,7 +590,7 @@ true
   (select minted-tokens (where "revealed" false))
 )
 
-(defun reveal-token:string 
+(defun reveal-token:string
   (
     m-token:object{minted-token}
     t-data:object{in-token-data}
@@ -580,12 +606,12 @@ true
       , "guard":= guard
       }
 
-      (create-marmalade-token 
-        account 
-        guard 
+      (create-marmalade-token
+        account
+        guard
         (get-mint-token-id collection token-id)
-        (+ 
-          t-data 
+        (+
+          t-data
           { "precision": precision
           , "policy": policy
           }
@@ -595,9 +621,9 @@ true
   )
 )
 
-(defun get-mint-token-id:string 
+(defun get-mint-token-id:string
   (
-    collection:string 
+    collection:string
     token-id:integer
   )
   (concat [collection "|" (int-to-str 10 token-id)])
@@ -609,14 +635,14 @@ true
 
   (defun add-whitelist-to-collection
     (
-      collection:string 
+      collection:string
       tier-data:[object{tier-whitelist-data}]
     )
     @doc "Requires creator guard. Adds the accounts to the whitelist for the given tier."
     (with-capability (WHITELIST collection)
       (let
         (
-          (handle-tier-data 
+          (handle-tier-data
             (lambda (tier-data:object{tier-whitelist-data})
               (let
                 (
@@ -624,7 +650,7 @@ true
                   (whitelist (at "accounts" tier-data))
                 )
                 (map (add-to-whitelist collection tierId) whitelist)
-              )   
+              )
             )
           )
         )
@@ -633,9 +659,9 @@ true
     )
   )
 
-(defun add-whitelist-to-tier:[string] 
+(defun add-whitelist-to-tier:[string]
 (
-  collection:string 
+  collection:string
   tier-data:object{tier-whitelist-data}
 )
 @doc "Requires creator guard. Adds the accounts to the whitelist for the given tier."
@@ -650,17 +676,17 @@ true
 )
 )
 
-(defun add-to-whitelist:string 
+(defun add-to-whitelist:string
 (
-  collection:string 
+  collection:string
   tierId:string
-  account:string 
+  account:string
 )
 @doc "Requires creator guard. Adds the account to the whitelist for the given tier."
 (require-capability (WLMOD))
 
 (insert whitelist-table (concat [collection ":" tierId ":" account])
-  { 
+  {
     "tierId": tierId
   , "account": account
   ,  "mint-count": 0
@@ -668,10 +694,10 @@ true
 )
 )
 
-(defun is-whitelisted:bool 
+(defun is-whitelisted:bool
 (
-  collection:string 
-  tierId:string 
+  collection:string
+  tierId:string
   account:string
 )
 @doc "Returns true if the account is whitelisted for the given tier."
@@ -689,8 +715,8 @@ true
 
 (defun get-whitelist-mint-count:integer
 (
-  collection:string 
-  tierId:string 
+  collection:string
+  tierId:string
   account:string
 )
 (let
@@ -705,20 +731,20 @@ true
 )
 )
 
-(defun get-whitelist-id:string 
+(defun get-whitelist-id:string
 (
-  collection:string 
-  tierId:string 
+  collection:string
+  tierId:string
   account:string
 )
 (concat [collection ":" tierId ":" account])
 )
 
-(defun update-whitelist-mint-count 
+(defun update-whitelist-mint-count
 (
-  collection:string 
-  tierId:string 
-  account:string 
+  collection:string
+  tierId:string
+  account:string
   count:integer
 )
 @doc "Requires Whitelist Update. Updates the mint count for the given account in the whitelist."
@@ -754,9 +780,9 @@ true
         (now (at "block-time" (chain-data)))
         (filter-tier
           (lambda (tier:object{tier})
-            (if (= (at "startTime" tier) (at "endTime" tier)) 
-              (>= now (at "startTime" tier))  
-              (and? 
+            (if (= (at "startTime" tier) (at "endTime" tier))
+              (>= now (at "startTime" tier))
+              (and?
                 (<= (at "startTime" tier))
                 (> (at "endTime" tier))
                 now
@@ -771,20 +797,20 @@ true
     )
   )
 
-  (defun get-unrevealed-tokens-for-collection:[object:{minted-token}] 
+  (defun get-unrevealed-tokens-for-collection:[object:{minted-token}]
     (
       collection:string
     )
     @doc "Returns a list of unrevealed tokens."
-    (select minted-tokens 
-      (and? 
+    (select minted-tokens
+      (and?
         (where "revealed" (= false))
         (where "collection" (= collection))
       )
     )
   )
 
-  (defun get-owned:[object:{minted-token}] 
+  (defun get-owned:[object:{minted-token}]
     (
       account:string
     )
@@ -792,14 +818,14 @@ true
     (select minted-tokens (where "account" (= account)))
   )
 
-  (defun get-owned-for-collection:[object:{minted-token}] 
+  (defun get-owned-for-collection:[object:{minted-token}]
     (
       account:string
       collection:string
     )
     @doc "Returns a list of tokens owned by the account."
-    (select minted-tokens 
-      (and? 
+    (select minted-tokens
+      (and?
         (where "account" (= account))
         (where "collection" (= collection))
       )
@@ -818,7 +844,7 @@ true
      ))
 
   (defun get-wl-collection ([object:{whitelisted}])
-    @doc "pull list of whitelist ID's for all collections." 
+    @doc "pull list of whitelist ID's for all collections."
         (keys whitelist-table)
   )
 
@@ -834,12 +860,12 @@ true
 )
 
 (defun get-all-collection-names:object{collection} ()
-  @doc "Returns a list of all collections."    
+  @doc "Returns a list of all collections."
   (keys collections)
 )
 (defconst name "name")
 
-       (defun get-all-collections3 () 
+       (defun get-all-collections3 ()
        @doc "Returns a list of all collections."
      (select collections (constantly true))
    )
@@ -883,7 +909,7 @@ true
 ; #############################################
 
 (defun create-offchain-multiple (array:[object])
-(map (offchain-token-id-and-manifest) array)    
+(map (offchain-token-id-and-manifest) array)
 )
 
 (defun offchain-token-id-and-manifest:object (t-data:object)
@@ -929,4 +955,3 @@ true
   (init)
 ]
 )
-
