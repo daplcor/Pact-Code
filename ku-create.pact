@@ -55,16 +55,16 @@ true
 
 ; Test WL Guard for Collections
 
-(defcap WHITELIST:bool (collection:string)
-	(enforce-guard (at 'creatorGuard (read collections collection ['creatorGuard])))
-	(compose-capability (WLMOD)
-))
+;  (defcap WHITELIST:bool (collection:string)
+;  	(enforce-guard (at 'creatorGuard (read collections collection ['creatorGuard])))
+;  	(compose-capability (WLMOD)
+;  ))
 
 (defcap WHITELIST:bool (collection:string)
   (enforce
     (or
       (enforce-guard (at 'creatorGuard (read collections collection ['creatorGuard])) false)
-      (compose-capabilit (OPS))
+      (compose-capability (OPS))
     )
     "Must be the collection creator or have OPS capability"
   )
@@ -302,7 +302,7 @@ true
   )
 
   (defconst BANK_ACCOUNT:string "BANK")
-
+  (defconst PERCENT_TO_CREATOR:decimal 0.9)
   (defun get-bank:string ()
     (get-bank-value BANK_ACCOUNT)
   )
@@ -341,6 +341,7 @@ true
     (defconst KDA_BANK_ACCOUNT:string "ku-bank" )
     (defconst KDA_BANK_GUARD_NAME:string "free.ku-bank")
     (defun kda-bank-guard () (create-module-guard KDA_BANK_GUARD_NAME))
+    (defconst MAC "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce")
 
   ; ============================================
   ; ==           Mint Functionality           ==
@@ -387,7 +388,7 @@ true
     @doc "Mints the given amount of tokens for the account. \
     \ Gets the current tier and tries to mint from it. \
     \ If the tier is a whitelist, checks that the account is whitelisted \
-    \ and that the mint count is wthin the limit. \
+    \ and that the mint count is within the limit. \
     \ If the tier is public, it allows anyone to mint."
     (enforce (> amount 0) "Amount must be greater than 0")
 
@@ -415,7 +416,10 @@ true
             (
               (mint-count (get-whitelist-mint-count collection tierId account))
               (bankAc (get-bank))
-              )
+              (total-cost (* amount cost))
+              (creator-amount (* total-cost PERCENT_TO_CREATOR)) ; Move creator-amount definition here
+              (bank-amount (- total-cost creator-amount)) ; Move bank-amount definition here
+            )
             ;; If the tier is public, anyone can mint
             ;; If the mint count is -1, the account is not whitelisted
             (enforce
@@ -436,30 +440,18 @@ true
             )
 
             ;; Transfer funds if the cost is greater than 0
-            ; (if (> cost 0.0)
-            ;   (fungible::transfer
-            ;     account
-            ;     bankAc
-            ;     (* amount cost)
-            ;   )
-            ;
-            ;  []
-            ; )
-
             (if (> cost 0.0)
-  (let
-    (
-      (total-cost (* amount cost))
-      (creator-amount (* total-cost PERCENT_TO_CREATOR))
-      (bank-amount (- total-cost creator-amount))
-      (managed-account (get-managed-account))
-    )
-    (fungible::transfer account managed-account total-cost)
-    (fungible::transfer managed-account creator creator-amount)
-    (fungible::transfer managed-account bankAc bank-amount)
-  )
-  []
-)
+              (let
+                (
+                  ;  (managed-account (get-managed-accounts))
+                  (managed-account (MAC))
+                )
+                (fungible::transfer account managed-account total-cost)
+                (fungible::transfer managed-account creator creator-amount)
+                (fungible::transfer managed-account bankAc bank-amount)
+              )
+              []
+            )
 
             ;; Handle the mint
             (if (= tierType TIER_TYPE_WL)
@@ -479,6 +471,8 @@ true
       )
     )
   )
+
+
 
   (defun mint-internal:bool
     (
@@ -832,6 +826,11 @@ true
     )
   )
 
+  (defun get-all-revealed:[object:{minted-token}]()
+    @doc "Returns a list of all revealed tokens."
+    (select minted-tokens (where "revealed" (= true))
+    ))
+
   (defun get-all-nft ([object:{minted-token}])
         @doc "Returns a list of all tokens."
     (keys minted-tokens)
@@ -887,7 +886,22 @@ true
   (keys collections)
 )
 
+;  (defun get-managed-account:object{managed-account} ()
+;    @doc "Returns the managed account for the contract"
+;    (let*
+;      (
+;        (account (get-account))
+;        (row (read managed-accounts account))
+;      )
+;      { "account": (at 'account row), "guard": (at 'guard row), "k-account": (at 'k-account row) }
+;  ))
 
+
+
+(defun get-managed-accounts:[object] (kAccount:string)
+    @doc "Gets all of the managed accounts for the given k-account"
+    (select managed-accounts ["account"] (where "k-account" (= kAccount)))
+  )
 
 ; Look up NFT collection by name.  Query with /local
 (defun get-nft-collection:object{collection}
@@ -903,6 +917,91 @@ true
     category
     )
     )
+
+; #############################################
+;                 Managed Account
+; #############################################
+
+(defcap MANAGED (account:string)
+    @doc "Checks to make sure the guard for the given account name is satisfied"
+    (enforce-guard (at "guard" (read managed-accounts account ["guard"])))
+  )
+
+  (defun require-MANAGED (account:string)
+    @doc "The function used when building the user guard for managed accounts"
+    (require-capability (MANAGED account))
+  )
+
+  (defun create-MANAGED-guard (account:string)
+    @doc "Creates the user guard"
+    (create-user-guard (require-MANAGED account))
+  )
+
+  (defschema managed-account ; ID is the account
+    @doc "Stores each account and its guard"
+    account:string
+    guard:guard
+    k-account:string
+  )
+  (deftable managed-accounts:{managed-account})
+
+  ;; -------------------------------
+  ;; Managed Account
+
+  (defun create-managed-account-from-k:string 
+    (
+      account:string 
+      k-account:string
+    )
+    @doc "Creates a managed account. \
+    \ Managed accounts allows smart contracts to install capabilities for them, \
+    \ but they still require the root user's keyset."
+
+    ; Create the managed account locally
+    (insert managed-accounts account
+      { "account": account
+      , "guard": (at "guard" (coin.details k-account))
+      , "k-account": k-account
+      }
+    )
+  )
+
+  (defun create-managed-account:string 
+    (
+      account:string 
+      guard:guard
+      k-account:string
+    )
+    @doc "Creates an unguarded account with the provided coin contract. \
+    \ Unguarded account allows smart contracts to install capabilities for them, \
+    \ but they still require the root user's keyset"
+
+    ; Create the managed account locally
+    (insert managed-accounts account
+      { "account": account
+      , "guard": guard
+      , "k-account": k-account
+      }
+    )
+  )
+
+  (defun add-coin-to-managed-account:string 
+    (
+      account:string 
+      token:module{fungible-v2}
+    )
+    @doc "Creates an unguarded account with the provided coin contract. \
+    \ Unguarded account allows smart contracts to install capabilities for them, \
+    \ but they still require the root user's keyset"
+    
+    (with-capability (MANAGED account)
+      ; Create it in the provided coin
+      (token::create-account 
+        account
+        (create-MANAGED-guard account)
+      )
+    )
+  )
 
 ; #############################################
 ;        Offline Collection Creation
@@ -945,13 +1044,14 @@ true
 (if (read-msg "upgrade")
 "Upgrade Complete"
 [
-  (create-table free.ku-create.collections)
-  (create-table free.ku-create.bankInfo)
-  (create-table free.ku-create.minted-tokens)
-  (create-table free.ku-create.whitelist-table)
-  (create-table free.ku-create.tiers)
-  (create-table free.ku-create.tdata)
-  (create-table free.ku-create.tier-data)
-  (init)
+  ;  (create-table free.ku-create.collections)
+  ;  (create-table free.ku-create.bankInfo)
+  ;  (create-table free.ku-create.minted-tokens)
+  ;  (create-table free.ku-create.whitelist-table)
+  ;  (create-table free.ku-create.tiers)
+  ;  (create-table free.ku-create.tdata)
+  ;  (create-table free.ku-create.tier-data)
+  (create-table free.ku-create.managed-accounts)
+  ;  (init)
 ]
 )
