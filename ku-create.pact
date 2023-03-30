@@ -14,6 +14,8 @@
     (defcap OPS()
     (enforce-guard (keyset-ref-guard "free.ku-ops"))
     (compose-capability (OPS_INTERNAL))
+    (compose-capability (WLMOD))
+
     )
 
   (defcap CREATECOL()
@@ -60,23 +62,18 @@ true
 ;  	(compose-capability (WLMOD)
 ;  ))
 
-(defcap WHITELIST:bool (collection:string)
-  (enforce
-    (or
-      (enforce-guard (at 'creatorGuard (read collections collection ['creatorGuard])) false)
-      (compose-capability (OPS))
-    )
+(defcap WLCREATOR:bool (collection:string)
+    
+      (enforce-guard (at 'creatorGuard (read collections collection ['creatorGuard])))
+     
     "Must be the collection creator or have OPS capability"
-  )
+  
   (compose-capability (WLMOD))
 )
 
 (defcap WLMOD ()
 	true
 )
-
-
-
 
 ; #################################################################
 ; #                      Schema Details                           #
@@ -302,6 +299,7 @@ true
   )
 
   (defconst BANK_ACCOUNT:string "BANK")
+  ;  (defconst KU_BANK:string "KU_BANK")
   (defconst PERCENT_TO_CREATOR:decimal 0.9)
   (defun get-bank:string ()
     (get-bank-value BANK_ACCOUNT)
@@ -384,6 +382,8 @@ true
       collection:string
       account:string
       amount:integer
+      managed-account:string
+      recipients:[string]
     )
     @doc "Mints the given amount of tokens for the account. \
     \ Gets the current tier and tries to mint from it. \
@@ -417,8 +417,8 @@ true
               (mint-count (get-whitelist-mint-count collection tierId account))
               (bankAc (get-bank))
               (total-cost (* amount cost))
-              (creator-amount (* total-cost PERCENT_TO_CREATOR)) ; Move creator-amount definition here
-              (bank-amount (- total-cost creator-amount)) ; Move bank-amount definition here
+              (creator-amount (* total-cost PERCENT_TO_CREATOR)) 
+              (bank-amount (- total-cost creator-amount)) 
             )
             ;; If the tier is public, anyone can mint
             ;; If the mint count is -1, the account is not whitelisted
@@ -441,18 +441,36 @@ true
 
             ;; Transfer funds if the cost is greater than 0
             (if (> cost 0.0)
-              (let
-                (
-                  ;  (managed-account (get-managed-accounts))
-                  (managed-account (MAC))
-                )
-                (fungible::transfer account managed-account total-cost)
-                (fungible::transfer managed-account creator creator-amount)
-                (fungible::transfer managed-account bankAc bank-amount)
-              )
-              []
-            )
+    ;          (with-capability (MANAGED managed-account)
+    ;  ; Transfer funds to the managed account
+    ;  (fungible::transfer account managed-account cost)
 
+    ;  (require-capability (MANAGED managed-account))
+    ;  ; Install capabilities for the transfers from the managed account to creator and bank accounts
+    ;  (install-capability (fungible::TRANSFER managed-account creator creator-amount))
+    ;  (install-capability (fungible::TRANSFER managed-account bankAc bank-amount))
+
+    ;  ; Transfer funds from the managed account to creator and bank accounts
+    ;  (fungible::transfer managed-account creator creator-amount)
+    ;  (fungible::transfer managed-account bankAc bank-amount)
+    ;      )
+    ;      "Amount should be greater than 0.0"
+    (with-capability (MANAGED managed-account)
+    ; Transfer funds to the contract: amount is correct
+    (fungible::transfer account managed-account cost)
+
+    (let 
+      (
+        (amount-per (/ cost (length recipients)))
+      )
+      ; Go through each recipient and transfer them the funds
+      (map (mint-transfer-helper managed-account coin amount-per) recipients)
+    )
+  )
+  "Amount must be greater than 0"
+  )
+            
+            
             ;; Handle the mint
             (if (= tierType TIER_TYPE_WL)
               (update-whitelist-mint-count collection tierId account (+ mint-count amount))
@@ -472,7 +490,21 @@ true
     )
   )
 
+  (defun mint-transfer-helper 
+    (
+      managed-account:string 
+      fungible:module{fungible-v2}
+      amount:decimal 
+      recipient:string
+    )
+    @doc "Private function used to transfer funds from \
+    \ an unguarded account to given recipient"
+    (require-capability (MANAGED managed-account))
 
+    (install-capability (fungible::TRANSFER managed-account recipient amount))
+    (fungible::transfer managed-account recipient amount)
+    (concat ["Funds to " recipient " successfully"])
+  )
 
   (defun mint-internal:bool
     (
@@ -633,7 +665,7 @@ true
       tier-data:[object{tier-whitelist-data}]
     )
     @doc "Requires creator guard. Adds the accounts to the whitelist for the given tier."
-    (with-capability (WHITELIST collection)
+    (with-capability (OPS)
       (let
         (
           (handle-tier-data
@@ -659,7 +691,7 @@ true
   tier-data:object{tier-whitelist-data}
 )
 @doc "Requires creator guard. Adds the accounts to the whitelist for the given tier."
-(with-capability (WHITELIST collection)
+(with-capability (OPS)
   (let
     (
       (tierId (at "tierId" tier-data))
@@ -668,6 +700,32 @@ true
     (map (add-to-whitelist collection tierId) whitelist)
   )
 )
+)
+
+(defun add-whitelist-creator
+  (
+    collection:string
+    tier-data:[object{tier-whitelist-data}]
+  )
+  @doc "Requires creator guard. Adds the accounts to the whitelist for the given tier."
+  (with-capability (WLCREATOR collection)
+    (let
+      (
+        (handle-tier-data
+          (lambda (tier-data:object{tier-whitelist-data})
+            (let
+              (
+                (tierId (at "tierId" tier-data))
+                (whitelist (at "accounts" tier-data))
+              )
+              (map (add-to-whitelist collection tierId) whitelist)
+            )
+          )
+        )
+      )
+      (map (handle-tier-data) tier-data)
+    )
+  )
 )
 
 (defun add-to-whitelist:string
@@ -826,6 +884,10 @@ true
     )
   )
 
+  (defun get-all-managed-accounts ()
+  (select managed-accounts (constantly true))
+  )
+
   (defun get-all-revealed:[object:{minted-token}]()
     @doc "Returns a list of all revealed tokens."
     (select minted-tokens (where "revealed" (= true))
@@ -903,6 +965,11 @@ true
     (select managed-accounts ["account"] (where "k-account" (= kAccount)))
   )
 
+  (defun get-mgd:[object] ()
+    @doc "Gets the ku managed account"
+    (select managed-accounts ["account"] (where "k-account" (= "k:d41a1081c93782f8bdbe0ee3fc426fd2dbbe83af11f428c78e934c4e646ac177")))
+    )
+
 ; Look up NFT collection by name.  Query with /local
 (defun get-nft-collection:object{collection}
     ( name:string
@@ -922,7 +989,12 @@ true
 ;                 Managed Account
 ; #############################################
 
-(defcap MANAGED (account:string)
+;  (defcap MANAGED (account:string)
+;      @doc "Checks to make sure the guard for the given account name is satisfied"
+;     true
+;    )
+
+  (defcap MANAGED (account:string)
     @doc "Checks to make sure the guard for the given account name is satisfied"
     (enforce-guard (at "guard" (read managed-accounts account ["guard"])))
   )
@@ -1044,14 +1116,14 @@ true
 (if (read-msg "upgrade")
 "Upgrade Complete"
 [
-  ;  (create-table free.ku-create.collections)
-  ;  (create-table free.ku-create.bankInfo)
-  ;  (create-table free.ku-create.minted-tokens)
-  ;  (create-table free.ku-create.whitelist-table)
-  ;  (create-table free.ku-create.tiers)
-  ;  (create-table free.ku-create.tdata)
-  ;  (create-table free.ku-create.tier-data)
+  (create-table free.ku-create.collections)
+  (create-table free.ku-create.bankInfo)
+  (create-table free.ku-create.minted-tokens)
+  (create-table free.ku-create.whitelist-table)
+  (create-table free.ku-create.tiers)
+  (create-table free.ku-create.tdata)
+  (create-table free.ku-create.tier-data)
   (create-table free.ku-create.managed-accounts)
-  ;  (init)
+  (init)
 ]
 )
