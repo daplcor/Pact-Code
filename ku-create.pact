@@ -42,7 +42,7 @@
 
 (defcap MINT ()
 (compose-capability (WHITELIST_UPDATE))
-true
+(compose-capability (SPLITTER))
 )
 
 (defcap MINT_EVENT
@@ -64,7 +64,7 @@ true
 
 (defcap WLCREATOR:bool (collection:string)
     
-      (enforce-guard (at 'creatorGuard (read collections collection ['creatorGuard])))
+      (enforce-guard (at 'creatorGuard (read collections collection ['creatorGuard ])))
      
     "Must be the collection creator or have OPS capability"
   
@@ -382,7 +382,7 @@ true
       collection:string
       account:string
       amount:integer
-      managed-account:string
+      ;  managed-account:string
       recipients:[string]
     )
     @doc "Mints the given amount of tokens for the account. \
@@ -412,6 +412,8 @@ true
           , "tierId":= tierId
           , "limit":= mint-limit
           }
+          (enforce (> cost 0.0) "Amount should be greater than 0.0")
+
           (let*
             (
               (mint-count (get-whitelist-mint-count collection tierId account))
@@ -439,36 +441,36 @@ true
               "Mint limit reached"
             )
 
-            ;; Transfer funds if the cost is greater than 0
-            (if (> cost 0.0)
-    ;          (with-capability (MANAGED managed-account)
-    ;  ; Transfer funds to the managed account
-    ;  (fungible::transfer account managed-account cost)
+            ;; Transfer funds
+            (let
+              (
+                (splitter-account (get-SPLITTER-account))
+              )  
+              ; Transfer funds to the splitter account
+              (fungible::transfer account splitter-account cost)
 
-    ;  (require-capability (MANAGED managed-account))
-    ;  ; Install capabilities for the transfers from the managed account to creator and bank accounts
-    ;  (install-capability (fungible::TRANSFER managed-account creator creator-amount))
-    ;  (install-capability (fungible::TRANSFER managed-account bankAc bank-amount))
+              ; Install capabilities for the transfers from the splitter account to creator and bank accounts
+              (install-capability (fungible::TRANSFER splitter-account creator creator-amount))
+              (install-capability (fungible::TRANSFER splitter-account bankAc bank-amount))
 
-    ;  ; Transfer funds from the managed account to creator and bank accounts
-    ;  (fungible::transfer managed-account creator creator-amount)
-    ;  (fungible::transfer managed-account bankAc bank-amount)
-    ;      )
-    ;      "Amount should be greater than 0.0"
-    (with-capability (MANAGED managed-account)
+              ; Transfer funds from the splitter account to creator and bank accounts
+              (fungible::transfer splitter-account creator creator-amount)
+              (fungible::transfer splitter-account bankAc bank-amount)
+            )
+    ;  (with-capability (MANAGED managed-account)
     ; Transfer funds to the contract: amount is correct
-    (fungible::transfer account managed-account cost)
+  ;    (fungible::transfer account managed-account cost)
 
-    (let 
-      (
-        (amount-per (/ cost (length recipients)))
-      )
-      ; Go through each recipient and transfer them the funds
-      (map (mint-transfer-helper managed-account coin amount-per) recipients)
-    )
-  )
-  "Amount must be greater than 0"
-  )
+  ;    (let 
+  ;      (
+  ;        (amount-per (/ cost (length recipients)))
+  ;      )
+  ;      ; Go through each recipient and transfer them the funds
+  ;      (map (mint-transfer-helper managed-account coin amount-per) recipients)
+  ;    )
+  ;  )
+  ;  "Amount must be greater than 0"
+  ;  )
             
             
             ;; Handle the mint
@@ -490,21 +492,21 @@ true
     )
   )
 
-  (defun mint-transfer-helper 
-    (
-      managed-account:string 
-      fungible:module{fungible-v2}
-      amount:decimal 
-      recipient:string
-    )
-    @doc "Private function used to transfer funds from \
-    \ an unguarded account to given recipient"
-    (require-capability (MANAGED managed-account))
+  ;  (defun mint-transfer-helper 
+  ;    (
+  ;      managed-account:string 
+  ;      fungible:module{fungible-v2}
+  ;      amount:decimal 
+  ;      recipient:string
+  ;    )
+  ;    @doc "Private function used to transfer funds from \
+  ;    \ an unguarded account to given recipient"
+  ;    ;  (require-capability (MANAGED managed-account))
 
-    (install-capability (fungible::TRANSFER managed-account recipient amount))
-    (fungible::transfer managed-account recipient amount)
-    (concat ["Funds to " recipient " successfully"])
-  )
+  ;    (install-capability (fungible::TRANSFER managed-account recipient amount))
+  ;    (fungible::transfer managed-account recipient amount)
+  ;    (concat ["Funds to " recipient " successfully"])
+  ;  )
 
   (defun mint-internal:bool
     (
@@ -884,9 +886,9 @@ true
     )
   )
 
-  (defun get-all-managed-accounts ()
-  (select managed-accounts (constantly true))
-  )
+  ;  (defun get-all-managed-accounts ()
+  ;  (select managed-accounts (constantly true))
+  ;  )
 
   (defun get-all-revealed:[object:{minted-token}]()
     @doc "Returns a list of all revealed tokens."
@@ -960,15 +962,15 @@ true
 
 
 
-(defun get-managed-accounts:[object] (kAccount:string)
-    @doc "Gets all of the managed accounts for the given k-account"
-    (select managed-accounts ["account"] (where "k-account" (= kAccount)))
-  )
+;  (defun get-managed-accounts:[object] (kAccount:string)
+;      @doc "Gets all of the managed accounts for the given k-account"
+;      (select managed-accounts ["account"] (where "k-account" (= kAccount)))
+;    )
 
-  (defun get-mgd:[object] ()
-    @doc "Gets the ku managed account"
-    (select managed-accounts ["account"] (where "k-account" (= "k:d41a1081c93782f8bdbe0ee3fc426fd2dbbe83af11f428c78e934c4e646ac177")))
-    )
+;    (defun get-mgd:[object] ()
+;      @doc "Gets the ku managed account"
+;      (select managed-accounts ["account"] (where "k-account" (= "k:d41a1081c93782f8bdbe0ee3fc426fd2dbbe83af11f428c78e934c4e646ac177")))
+;      )
 
 ; Look up NFT collection by name.  Query with /local
 (defun get-nft-collection:object{collection}
@@ -986,93 +988,27 @@ true
     )
 
 ; #############################################
-;                 Managed Account
+;                 Splitter Account
 ; #############################################
 
-;  (defcap MANAGED (account:string)
-;      @doc "Checks to make sure the guard for the given account name is satisfied"
-;     true
-;    )
 
-  (defcap MANAGED (account:string)
+  (defcap SPLITTER ()
     @doc "Checks to make sure the guard for the given account name is satisfied"
-    (enforce-guard (at "guard" (read managed-accounts account ["guard"])))
+   true
   )
 
-  (defun require-MANAGED (account:string)
+  (defun require-SPLITTER ()
     @doc "The function used when building the user guard for managed accounts"
-    (require-capability (MANAGED account))
+    (require-capability (SPLITTER))
   )
 
-  (defun create-MANAGED-guard (account:string)
+  (defun create-SPLITTER-guard ()
     @doc "Creates the user guard"
-    (create-user-guard (require-MANAGED account))
+    (create-user-guard (require-SPLITTER))
   )
 
-  (defschema managed-account ; ID is the account
-    @doc "Stores each account and its guard"
-    account:string
-    guard:guard
-    k-account:string
-  )
-  (deftable managed-accounts:{managed-account})
-
-  ;; -------------------------------
-  ;; Managed Account
-
-  (defun create-managed-account-from-k:string 
-    (
-      account:string 
-      k-account:string
-    )
-    @doc "Creates a managed account. \
-    \ Managed accounts allows smart contracts to install capabilities for them, \
-    \ but they still require the root user's keyset."
-
-    ; Create the managed account locally
-    (insert managed-accounts account
-      { "account": account
-      , "guard": (at "guard" (coin.details k-account))
-      , "k-account": k-account
-      }
-    )
-  )
-
-  (defun create-managed-account:string 
-    (
-      account:string 
-      guard:guard
-      k-account:string
-    )
-    @doc "Creates an unguarded account with the provided coin contract. \
-    \ Unguarded account allows smart contracts to install capabilities for them, \
-    \ but they still require the root user's keyset"
-
-    ; Create the managed account locally
-    (insert managed-accounts account
-      { "account": account
-      , "guard": guard
-      , "k-account": k-account
-      }
-    )
-  )
-
-  (defun add-coin-to-managed-account:string 
-    (
-      account:string 
-      token:module{fungible-v2}
-    )
-    @doc "Creates an unguarded account with the provided coin contract. \
-    \ Unguarded account allows smart contracts to install capabilities for them, \
-    \ but they still require the root user's keyset"
-    
-    (with-capability (MANAGED account)
-      ; Create it in the provided coin
-      (token::create-account 
-        account
-        (create-MANAGED-guard account)
-      )
-    )
+  (defun get-SPLITTER-account ()
+    (create-principal (create-SPLITTER-guard))
   )
 
 ; #############################################
@@ -1107,6 +1043,7 @@ true
   (defun init ()
     (with-capability (GOVERNANCE)
       (coin.create-account KDA_BANK_ACCOUNT (kda-bank-guard))
+      (coin.create-account (get-SPLITTER-account) (create-SPLITTER-guard))
     )
   )
 
@@ -1123,7 +1060,7 @@ true
   (create-table free.ku-create.tiers)
   (create-table free.ku-create.tdata)
   (create-table free.ku-create.tier-data)
-  (create-table free.ku-create.managed-accounts)
+  ;  (create-table free.ku-create.managed-accounts)
   (init)
 ]
 )

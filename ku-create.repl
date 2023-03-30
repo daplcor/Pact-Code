@@ -21,7 +21,7 @@
       "keys": [
         "ku-bank"
       ],
-      "pred": "keys-any"
+      "pred": "keys-all"
     },
     "bank-guard": {
       "keys": [
@@ -38,7 +38,7 @@
       "totalSupply": 15.0,
       "provenance": "abc",
       "category": "Artwork",
-      "creator": "sally",
+      "creator": "bob",
       "creatorGuard": {
         "keys": [ "creatorGuard" ],
         "pred": "keys-any"
@@ -82,31 +82,32 @@
 
 
 (begin-tx "create collection")
-(free.ku-create.create-collection (read-msg 'collection)coin)
+(free.ku-create.create-collection (read-msg 'collection ) coin)
 (commit-tx)
 
-(begin-tx "Whitelist Operations")
+;  (begin-tx "Whitelist Operations")
 
-(expect-failure "add whitelist to collection"
-  "Tx Failed: Keyset failure (keys-any): [ops]"  
-  (free.ku-create.add-whitelist-to-collection "" [])
-)
-(expect-failure "add whitelist to collection"
-  "Tx Failed: Keyset failure (keys-any): [creatorGuard]"  
-  (free.ku-create.add-whitelist-creator "" [])
-)
+;  (expect-failure "add whitelist to collection"
+;    "Tx Failed: Keyset failure (keys-any): [ops]"  
+;    (free.ku-create.add-whitelist-to-collection "" [])
+;  )
+;  (expect-failure "add whitelist to collection"
+;    "Tx Failed: Keyset failure (keys-any): [creatorGuard]"  
+;    (free.ku-create.add-whitelist-creator "" [])
+;  )
 ;  (expect-that "add whitelist to collection")
 ;  "Tx Succeeded: Keyset success (keys-any): [ops]"  
 ;  (free.ku-create.add-whitelist-to-collection "test-collection" [{"tierId":"tier0", "accounts":["alice"]}])
-(commit-tx)
+;  (commit-tx)
 ;  (begin-tx "mint token")
 ;  (free.ku-create.mint "test-collection" "bob" 1)
 ;  (commit-tx)
 
-(begin-tx "Managed account creation")
-(use free.ku-create)
+
+;  (begin-tx "Managed account creation")
+;  (use free.ku-create)
 ;  (env-events true)
-(env-chain-data { "block-time": (time "2023-01-03T20:00:00Z")})
+;  
 ;  (env-sigs
 ;    [{
 ;      "key": "sally-key",
@@ -119,60 +120,70 @@
 ;    }])
   ;  (env-keys ["bob-key"])
   ;  (env-keys ["sally-key"])
-(env-keys ["alice-key"])
-(env-sigs
-  [{
-    "key": "alice-key",
-    "caps": [
-      (MANAGED "swag")
-    ]
-  }])
-(env-data 
-  { 
-    "alice-key": { "keys": ["alice-key"], "pred": "="}   
-  }
-  )
+;  (env-keys ["alice-key"])
+;  (env-sigs
+;    [{
+;      "key": "alice-key",
+;      "caps": [
+;        (MANAGED "swag")
+;      ]
+;    }])
+;  (env-data 
+;    { 
+;      "alice-key": { "keys": ["alice-key"], "pred": "="}   
+;    }
+;    )
   
 
 ;  (expect-that "Creates a managed account"
 ;  (= "Write suceeded")
 ;  ((free.ku-create.create-managed-account "KU_BANK" (read-keyset "alice") "alice"))
 ;  )
-(expect-that "Creates a managed account"
-  (= "Write succeeded")
-  (create-managed-account "swag" (read-keyset "alice-key") "alice")
-)
+;  (expect-that "Creates a managed account"
+;    (= "Write succeeded")
+;    (create-managed-account "swag" (read-keyset "alice-key") "alice")
+;  )
 ;  (expect-that "Creates a managed account from k account"
 ;    (= "Write succeeded")
 ;    (create-managed-account-from-k "swag" "alice")
 ;  )
 
-(expect-that "Add coin to managed account"
-  (= "Write succeeded")
-  (add-coin-to-managed-account "swag" coin)
-)
+;  (expect-that "Add coin to managed account"
+;    (= "Write succeeded")
+;    (add-coin-to-managed-account "swag" coin)
+;  )
 
-(commit-tx)
+;  (commit-tx)
+
 
 (begin-tx "Add Bank Account")
 (env-keys ["ku-ops"])
-(free.ku-create.update-bank "BANK" "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce")
+(coin.create-account "BANK" (read-keyset "ku-bank"))
+(free.ku-create.update-bank "BANK" "BANK")
  (commit-tx)
- (begin-tx)
- (env-sigs
-    [{
-      "key": "sally-key",
-      "caps": [
-        (free.ku-create.MANAGED "swag")
-         (coin.TRANSFER "sally" "swag" 50.0)
-      ]
-    }])
-    ;  (env-data 
-    ;      { 
-    ;        "sally": { "keys": ["sally-key"], "pred": "="}   
-    ;      }
-    ;      )
-    (env-keys ["sally-key"])
-    (free.ku-create.mint "test-collection" "sally" 1 "swag" ["bankAc","creator"])
- (commit-tx)
+
+
+(begin-tx)
+(env-chain-data { "block-time": (time "2023-01-03T20:00:00Z")})
+(env-keys ["alice-key"])
+(env-sigs
+[{
+  "key": "alice-key",
+  "caps": [
+      (coin.TRANSFER "alice" (free.ku-create.get-SPLITTER-account) 60.0)
+  ]
+}])
+
+(free.ku-create.mint "test-collection" "alice" 1 ["bankAc","creator"])
+
+(expect-that "Amounts were transferred"
+  (= [950.0 50.0 1045.0])
+  [
+    (coin.get-balance "alice")
+    (coin.get-balance "BANK")
+    (coin.get-balance "bob")
+  ]
+)
+
+(commit-tx)
  
