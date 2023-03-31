@@ -336,9 +336,9 @@
     (defconst collection-name "collection-name")
     (defconst cRate 0.95)
     (defconst bRate 0.05)
-    (defconst KDA_BANK_ACCOUNT:string "ku-bank" )
-    (defconst KDA_BANK_GUARD_NAME:string "free.ku-bank")
-    (defun kda-bank-guard () (create-module-guard KDA_BANK_GUARD_NAME))
+    (defconst KDA_BANK_ACCOUNT:string "kuBank" )
+    (defconst KDA_BANK_GUARD_NAME:string "free.kBank")
+    ;  (defun kda-bank-guard () (create-module-guard KDA_BANK_GUARD_NAME))
     (defconst MAC "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce")
 
   ; ============================================
@@ -382,7 +382,6 @@
       collection:string
       account:string
       amount:integer
-      ;  managed-account:string
       recipients:[string]
     )
     @doc "Mints the given amount of tokens for the account. \
@@ -418,9 +417,9 @@
             (
               (mint-count (get-whitelist-mint-count collection tierId account))
               (bankAc (get-bank))
-              (total-cost (* amount cost))
-              (creator-amount (* total-cost PERCENT_TO_CREATOR)) 
-              (bank-amount (- total-cost creator-amount)) 
+              (total-cost:decimal (* amount cost))
+              (creator-amount:decimal (floor (* total-cost PERCENT_TO_CREATOR) 2)) 
+              (bank-amount:decimal (- total-cost creator-amount))
             )
             ;; If the tier is public, anyone can mint
             ;; If the mint count is -1, the account is not whitelisted
@@ -447,7 +446,7 @@
                 (splitter-account (get-SPLITTER-account))
               )  
               ; Transfer funds to the splitter account
-              (fungible::transfer account splitter-account cost)
+              (fungible::transfer account splitter-account total-cost)
 
               ; Install capabilities for the transfers from the splitter account to creator and bank accounts
               (install-capability (fungible::TRANSFER splitter-account creator creator-amount))
@@ -457,20 +456,6 @@
               (fungible::transfer splitter-account creator creator-amount)
               (fungible::transfer splitter-account bankAc bank-amount)
             )
-    ;  (with-capability (MANAGED managed-account)
-    ; Transfer funds to the contract: amount is correct
-  ;    (fungible::transfer account managed-account cost)
-
-  ;    (let 
-  ;      (
-  ;        (amount-per (/ cost (length recipients)))
-  ;      )
-  ;      ; Go through each recipient and transfer them the funds
-  ;      (map (mint-transfer-helper managed-account coin amount-per) recipients)
-  ;    )
-  ;  )
-  ;  "Amount must be greater than 0"
-  ;  )
             
             
             ;; Handle the mint
@@ -1042,7 +1027,7 @@
 
   (defun init ()
     (with-capability (GOVERNANCE)
-      (coin.create-account KDA_BANK_ACCOUNT (kda-bank-guard))
+      ;  (coin.create-account KDA_BANK_ACCOUNT (kda-bank-guard))
       (coin.create-account (get-SPLITTER-account) (create-SPLITTER-guard))
     )
   )
