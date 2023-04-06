@@ -30,6 +30,7 @@
     creator:string
     creator-guard:guard
     royalty-rate:decimal
+    collectionName:string
   )
 
   (deftable policies:{policy-schema})
