@@ -17,6 +17,8 @@
       true
     )
 
+    (use free.util-random)
+
     ; #####################################################
 
       (defschema auction
@@ -27,6 +29,7 @@
       minPrice:decimal
       startTime:time
       endTime:time
+      owner:string
       highestBid:decimal
       highestBidder:string
       escrowId:string
@@ -36,33 +39,38 @@
   
     (defun list-item
       ( 
-        item:object{poly-fungible-v2} ###### Decide object or string is needed here
-        item:string
+        listData:object
         amount:decimal
-        fungible:module{fungible-v2}
         minPrice:decimal
-        startTime:time
-        endTime:time
-      )
+        fungible:module{fungible-v2}
+       )
       @doc
         "Transfer the amount of items into an escrow account and store the start and end times of the auction along with the min amount and the fungible that is required for the purchase."
-      (let* ( (escrowId (make-uuid)) Replace make-uuid with an actual function that generates an escrow ID
-              (escrow-account (format "escrow-{}" [escrowId]))
-              (escrow-guard (create-module-guard (hash escrowId)))  ######### Replace module-guard with escrow account guard
+      (let* ( (escrowId (gen-uuid-rfc-4122-v4)) 
+              (escrow-account (format "escrow-{}" (get-ESCROW-account)))
+              (escrow-guard (get-ESCROW-guard))
+              (item (at "item" listData))
+              (owner (at "owner" listData))
+              (startTime (at "startTime" listData))
+              (endTime (at "endTime" listData))  
             )
-        (fungible::create-account item.id escrow-account escrow-guard)
-        (fungible::transfer item.id item.owner escrow-account amount)
-        (insert auctions { "item": item,
-                           "amount": amount,
-                           "fungible": fungible,
-                           "minPrice": minPrice,
-                           "startTime": startTime,
-                           "endTime": endTime,
-                           "highestBid": 0.0,
-                           "highestBidder": "",
-                           "escrowId": escrowId
-                         })
-    ))
+        (fungible::create-account item escrow-account escrow-guard)
+        (fungible::transfer item owner escrow-account amount)
+        (insert auctions (at "item" listData)
+            { 
+                "item": item,
+                "amount": amount,
+                "fungible": fungible,
+                "minPrice": minPrice,
+                "startTime": startTime,
+                "endTime": endTime,
+                "highestBid": 0.0,
+                "highestBidder": "",
+                "escrowId": escrowId           
+            }
+                listData
+            )
+    )))
   
     (defun place-bid
       ( escrowId:string
@@ -119,12 +127,44 @@
         (delete auctions escrowId)
     ))
   
+; #############################################
+;                 ESCROW Account
+; #############################################
+
+
+(defcap ESCROW ()
+@doc "Checks to make sure the guard for the given account name is satisfied"
+true
+)
+
+(defun require-ESCROW ()
+@doc "The function used when building the user guard for managed accounts"
+(require-capability (ESCROW))
+)
+
+(defun create-ESCROW-guard ()
+@doc "Creates the user guard"
+(create-user-guard (require-ESCROW))
+)
+
+(defun get-ESCROW-account ()
+(create-principal (create-ESCROW-guard))
+)
+
+
+(defun init ()
+(with-capability (GOVERNANCE)
+  ;  (coin.create-account KDA_BANK_ACCOUNT (kda-bank-guard))
+  (coin.create-account (get-ESCROW-account) (create-ESCROW-guard))
+)
+)
+
   )
 
   (if (read-msg "upgrade")
   "Upgrade Complete"
   [
   (create-table ki-auction.auctions)
-
+  (init)
   ]
   )

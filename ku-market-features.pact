@@ -58,19 +58,19 @@
 
 ; Buy and sell
 
-(defun open-sale (type:string id:string owner:string buy_now_price:decimal sale_start_days:integer sale_end_days:integer minimum_bid:decimal)
+(defun open-sale (type:string id:string owner:string buyNow:decimal saleStart:integer saleEnd:integer minimum_bid:decimal)
             (with-default-read sale id {"closed": true} {"closed":= current_sale_closed}
                 (enforce (= true current_sale_closed) "Previous sale not closed")
                 (let* (
                                 (owner_details (coin.details owner))
                                 (token_details (marmalade.ledger.details id owner))
-                                (can_buy_now (and (> buy_now_price 0.0) (!= type "time")))
+                                (can_buy_now (and (> buyNow 0.0) (!= type "time")))
                                 (sale_id (hash [id, owner (now)]))
                             )
                             (enforce (> (at "balance" token_details) 0.0) "Token balance is 0")
                         
                             (if (= type "time")
-                                (enforce (and (>= sale_end_days 1) (<= sale_end_days 7)) "Auction should last between 1 and 7 days")
+                                (enforce (and (>= saleEnd 1) (<= saleEnd 7)) "Auction should last between 1 and 7 days")
                                 "Not a time auction"
                             )
 
@@ -79,15 +79,15 @@
                                 (marmalade.ledger.transfer-create id owner NFT_BANK_ACCT (nft-bank-guard) 1.0)
                             )
                             
-                            (emit-event (OPEN_SALE id sale_id type owner buy_now_price sale_start_days sale_end_days minimum_bid))
+                            (emit-event (OPEN_SALE id sale_id type owner buyNow saleStart saleEnd minimum_bid))
                             (write sales id {
-                                "token-id": id,
+                                "token-id": id,ef
                                 "owner": owner,
                                 "salePrice": buy_now_price,
                                 "forSale": true,
                                 "buyNow": can_buy_now,
-                                "saleStart": (add-time (now) (days sale_start_days)),
-                                "saleEnd": (add-time (now) (days sale_end_days))
+                                "saleStart": (add-time (now) (days saleStart)),
+                                "saleEnd": (add-time (now) (days saleEnd))
                             })
                 )
             )
@@ -122,8 +122,8 @@
   (delete escrow tokenId))
 
   (defun buy-sell-continuation (tokenId:string buyer:string seller:string price:decimal)
-  (enforce-keyset 'buyer-ks)
-  (enforce-keyset 'seller-ks)
+  (enforce-guard 'buyer-ks)
+  (enforce-guard 'seller-ks)
   (buy-nft tokenId buyer price)
   (complete-transfer tokenId buyer seller))
 
@@ -182,13 +182,15 @@
   )
 
 ;; Define the royalty recipients and their percentages
-(define royalty-recipients
+;; This will take an input from an array of objects
+;; that are defined from kadenai.
+(defconst royalty-recipients
     [{"account": "recipient1", "percentage": 0.5},
      {"account": "recipient2", "percentage": 0.3},
      {"account": "recipient3", "percentage": 0.2}])
   
   ;; Define the marketplace fee percentage
-  (define marketplace-fee-percentage 0.05)
+  (defconst marketplace-fee-percentage 0.05)
   
   ;; Define a function to distribute royalties
   (defun distribute-royalties:(payment:decimal marketplace-fee:decimal)
