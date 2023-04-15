@@ -23,12 +23,7 @@
     true
     )
  
-
-  
-    ;  (defconst IMAGECOST 0.01)
-    ;  (defconst BANK "bob")
     (defconst fungible "fungible")
-
   
     (defschema payment-table
       account:string
@@ -76,8 +71,6 @@
  )
 )
 
-
-
     (defun create-collection:string
        (collectionData:object
         fungible:module{fungible-v2})
@@ -91,17 +84,11 @@
         collectionData
       )
     ))
-  
-
-;      (defun record-payment (payment:object{payment-table})
-;    (insert payments (at "account" payment) payment)
-;  )
 
 (defun record-payment (payment:object{payment-table})
   (insert payments (at "name" payment) payment)
 )
 
-  
   (defun update-payment (account:string name:string cost:decimal fungible:module{fungible-v2})
   @doc "Updates the payment data for collection"
   (with-read payments name 
