@@ -1,0 +1,189 @@
+(load "kda-env/init.repl")
+
+(begin-tx "Load in the nft environment")
+
+(env-keys ["ku-admin" "ku-ops" "creatorGuard"])
+(env-data
+  {
+    "ku-admin": {
+      "keys": [
+        "ku-admin"
+      ],
+      "pred": "keys-any"
+    },
+    "ku-ops": {
+      "keys": [
+        "ku-ops"
+      ],
+      "pred": "keys-any"
+    },
+    "ku-bank": {
+      "keys": [
+        "ku-bank"
+      ],
+      "pred": "keys-all"
+    },
+    "bank-guard": {
+      "keys": [
+        "ku-admin"
+      ],
+      "pred": "keys-all"
+    },
+    "creatorGuard": {
+        "keys": [ "creatorGuard" ],
+        "pred": "keys-any"
+      },
+    "collection": {
+      "name": "test-collection",
+      "totalSupply": 15.0,
+      "provenance": "abc",
+      "category": "Artwork",
+      "creator": "bob",
+      "creatorGuard": {
+        "keys": [ "creatorGuard" ],
+        "pred": "keys-any"
+      },
+      "description": "test-description",
+      "rootUri": "https://example.com",
+      "tiers": [
+         {
+          "tierId": "public",
+          "tierType": "PUBLIC",
+          "startTime": {"time": "2023-01-03T00:00:00Z"},
+          "endTime": {"time": "2024-01-03T00:00:00Z"},
+          "cost": 50.0,
+          "limit": -1.0
+        }
+      ]
+    },
+    "collection-name": "test-collection",
+    "tier-data": [
+      {
+        "tierId": "free",
+        "accounts": ["bob"]
+      },
+      {
+        "tierId": "discount",
+        "accounts": ["bob", "alice"]
+      }
+    ],
+    "can-offer": true,
+    "can-buy": true,
+    "can-transfer": true,
+    "can-burn": true,
+    "can-xchain": true,
+    "upgrade": false
+  }
+)
+
+(load "spit.pact")
+(load "ku-token-policy.pact")
+(commit-tx)
+
+
+(begin-tx "create collection")
+(free.ku-create.create-collection (read-msg 'collection ) coin)
+(commit-tx)
+
+;  (begin-tx "Whitelist Operations")
+
+;  (expect-failure "add whitelist to collection"
+;    "Tx Failed: Keyset failure (keys-any): [ops]"  
+;    (free.ku-create.add-whitelist-to-collection "" [])
+;  )
+;  (expect-failure "add whitelist to collection"
+;    "Tx Failed: Keyset failure (keys-any): [creatorGuard]"  
+;    (free.ku-create.add-whitelist-creator "" [])
+;  )
+;  (expect-that "add whitelist to collection")
+;  "Tx Succeeded: Keyset success (keys-any): [ops]"  
+;  (free.ku-create.add-whitelist-to-collection "test-collection" [{"tierId":"tier0", "accounts":["alice"]}])
+;  (commit-tx)
+;  (begin-tx "mint token")
+;  (free.ku-create.mint "test-collection" "bob" 1)
+;  (commit-tx)
+
+
+;  (begin-tx "Managed account creation")
+;  (use free.ku-create)
+;  (env-events true)
+;  
+;  (env-sigs
+;    [{
+;      "key": "sally-key",
+;      "caps": [
+;        (free.ku-create.MANAGED "swag")
+      
+;        (coin.TRANSFER "sally" "swag" 50.0)
+      
+;      ]
+;    }])
+  ;  (env-keys ["bob-key"])
+  ;  (env-keys ["sally-key"])
+;  (env-keys ["alice-key"])
+;  (env-sigs
+;    [{
+;      "key": "alice-key",
+;      "caps": [
+;        (MANAGED "swag")
+;      ]
+;    }])
+;  (env-data 
+;    { 
+;      "alice-key": { "keys": ["alice-key"], "pred": "="}   
+;    }
+;    )
+  
+
+;  (expect-that "Creates a managed account"
+;  (= "Write suceeded")
+;  ((free.ku-create.create-managed-account "KU_BANK" (read-keyset "alice") "alice"))
+;  )
+;  (expect-that "Creates a managed account"
+;    (= "Write succeeded")
+;    (create-managed-account "swag" (read-keyset "alice-key") "alice")
+;  )
+;  (expect-that "Creates a managed account from k account"
+;    (= "Write succeeded")
+;    (create-managed-account-from-k "swag" "alice")
+;  )
+
+;  (expect-that "Add coin to managed account"
+;    (= "Write succeeded")
+;    (add-coin-to-managed-account "swag" coin)
+;  )
+
+;  (commit-tx)
+
+
+(begin-tx "Add Bank Account")
+(env-keys ["ku-ops"])
+(coin.create-account "BANK" (read-keyset "ku-bank"))
+(free.ku-create.update-bank "BANK" "BANK")
+ (commit-tx)
+
+
+(begin-tx)
+(env-chain-data { "block-time": (time "2023-01-03T20:00:00Z")})
+(env-keys ["alice-key"])
+(env-sigs
+[{
+  "key": "alice-key",
+  "caps": [
+      (coin.TRANSFER "alice" (free.ku-create.get-SPLITTER-account) 60.0)
+  ]
+}])
+
+(free.ku-create.mint "test-collection" "alice" 1 ["bankAc","creator"])
+
+(expect-that "Amounts were transferred"
+  (= [950.0 50.0 1045.0])
+  [
+    (coin.get-balance "alice")
+    (coin.get-balance "BANK")
+    (coin.get-balance "bob")
+  ]
+)
+
+(commit-tx)
+ 
