@@ -1,4 +1,4 @@
-(load "kda-env/init.repl")
+(load "../kda-env/init.repl")
 
 (begin-tx "Load in the nft environment")
 
