@@ -3,7 +3,7 @@
 (define-keyset "free.ku-ops" (read-keyset "ku-ops"))
 (define-keyset "free.ku-admin" (read-keyset "ku-admin"))
 
-(module ku-token-policy GOVERNANCE
+(module ku-token-policy-v2 GOVERNANCE
     
   (defcap GOVERNANCE ()
   (enforce-guard (keyset-ref-guard "free.ku-admin")))
@@ -17,9 +17,9 @@
       true
     )
   
-  (implements kip.token-policy-v1)
+  (implements kip.token-policy-v2)
     
-  (use kip.token-policy-v1 [token-info])
+  (use kip.token-policy-v2 [token-info])
   
   ; ============================================
   ; ==             Policies                   ==
@@ -30,7 +30,6 @@
     creator:string
     creator-guard:guard
     royalty-rate:decimal
-    collectionName:string
   )
 
   (deftable policies:{policy-schema})
@@ -122,7 +121,7 @@
 (if (read-msg "upgrade")
 "Upgrade Complete"
 [
-  (create-table free.ku-token-policy.policies)
+  (create-table policies)
 ]
 )
 

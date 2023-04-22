@@ -14,6 +14,7 @@
 (load "./marmalade/fixed-quote-policy.pact")
 (load "./marmalade/fixed-quote-royalty-policy.pact")
 
+
 (commit-tx)
 
 (print "Marmalade contracts initialized")
