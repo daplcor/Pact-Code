@@ -1,4 +1,4 @@
-(load "marm-v2/init.repl")
+(load "../marm-v2/init.repl")
 
 (begin-tx "Load in the nft environment")
 
@@ -65,7 +65,7 @@
    { 'key: 'marmalade-admin
     ,'caps: []
     }])
-(load "./marm-v2/marmalade/ns-marmalade.pact")
+(load "../marm-v2/marmalade/ns-marmalade.pact")
 (env-data
  { 'marmalade-admin: ["marmalade-admin"]
  , 'marmalade-ns-user: ["marmalade-admin"]
@@ -73,15 +73,15 @@
  , 'ns: "marmalade"
  , 'upgrade: true })
 ;  (load "./marm-v2/marmalade/concrete-policies/fungible-quote-policy/fungible-quote-policy-interface-v1.pact")
-(load "./marm-v2/marmalade/policy-manager.pact")
-(load "./marm-v2/marmalade/ledger.pact")
+(load "../marm-v2/marmalade/policy-manager.pact")
+(load "../marm-v2/marmalade/ledger.pact")
 (commit-tx)
 
 (begin-tx "load concrete-polices")
-(load "./marm-v2/marmalade/concrete-policies/fungible-quote-policy/fungible-quote-policy-v1.pact")
-(load "./marm-v2/marmalade/concrete-policies/non-fungible-policy/non-fungible-policy-v1.pact")
-(load "./marm-v2/marmalade/concrete-policies/royalty-policy/royalty-policy-v1.pact")
-(load "./marm-v2/marmalade/concrete-policies/collection-policy/collection-policy-v1.pact")
+(load "../marm-v2/marmalade/concrete-policies/fungible-quote-policy/fungible-quote-policy-v1.pact")
+(load "../marm-v2/marmalade/concrete-policies/non-fungible-policy/non-fungible-policy-v1.pact")
+(load "../marm-v2/marmalade/concrete-policies/royalty-policy/royalty-policy-v1.pact")
+(load "../marm-v2/marmalade/concrete-policies/collection-policy/collection-policy-v1.pact")
 
 (use kip.concrete-policy-v1 [QUOTE_POLICY NON_FUNGIBLE_POLICY ROYALTY_POLICY COLLECTION_POLICY])
 (marmalade.policy-manager.init (marmalade.ledger.ledger-guard))
