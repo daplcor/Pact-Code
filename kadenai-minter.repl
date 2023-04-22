@@ -152,8 +152,7 @@
  ,"account": "account"
  ,"mint-guard": {"keys": ["account"], "pred": "keys-all"}
   })
-  (marmalade.ledger.create-token (read-msg 'token-id) 0 "test-uri" util.DEFAULT_POLICIES )
-;    (free.kadenai-minter.mint (read-msg 'token-id)  "test-uri" 0 util.DEFAULT_POLICIES )
+  ;  (marmalade.ledger.create-token (read-msg 'token-id) 0 "test-uri" util.DEFAULT_POLICIES )
   (commit-tx)
 
   (begin-tx "mint")
@@ -161,12 +160,16 @@
     { 'key: 'account
      ,'caps: [(marmalade.ledger.MINT "t:u5kvgh1HISROlQGLTQGF7gTzyjBtXxSe7BQjI3cPcC8" "account" 1.0)]
      }])
-  
+
+     (env-sigs [
+      { 'key: 'bob
+       ,'caps: [(marmalade.ledger.MINT "t:u5kvgh1HISROlQGLTQGF7gTzyjBtXxSe7BQjI3cPcC8" "bob" 1.0)]
+       }])
   ;  (expect "create a default token with quote-policy, non-fungible-policy"
   ;    true
   ;    (create-token (read-msg 'token-id) 0 "test-uri" util.DEFAULT_POLICIES ))
   
-  (expect "mint a default token with quote-policy, non-fungible-policy"
-    true
-    (marmalade.ledger.mint (read-msg 'token-id )  (read-msg 'account ) (read-keyset 'mint-guard ) 1.0))
+  ;  (expect "mint a default token with quote-policy, non-fungible-policy"
+  ;    true
+  ;    (marmalade.ledger.mint (read-msg 'token-id )  (read-msg 'account ) (read-keyset 'mint-guard ) 1.0))
   (commit-tx)

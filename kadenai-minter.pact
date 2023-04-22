@@ -29,7 +29,7 @@
       account:string
       uri:string
       precision:integer
-      policies:module{kip.token-policy-v2}
+     policies:object{kip.token-policy-v2.token-policies}
     )
     @doc "Mints one token and sets owner from account field"
         ;  (with-capability (MINT))
@@ -79,7 +79,7 @@
 (defun hash-contents:string
   ( uri:string
     precision:integer
-    policies:module{kip.token-policy-v2}
+    policies:object{kip.token-policy-v2.token-policies}
   )
   (hash {'uri: uri, 'precision:precision, 'policies:policies})
 )
