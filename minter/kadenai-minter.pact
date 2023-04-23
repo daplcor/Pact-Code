@@ -36,7 +36,7 @@
 
     ;  (enforce (= precision 0))
     ;  (enforce (marmalade.ledger.is-authorized account) "Unauthorized")
-  
+  (with-capability (MINT)
     (let*
       (
         (hash-id (hash-contents uri precision policies))
@@ -67,6 +67,7 @@
         }
       )
     )
+  )
   )
     
 

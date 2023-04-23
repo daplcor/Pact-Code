@@ -51,7 +51,7 @@
 ;  (load "../root/gas-payer-v1.pact")
 ;  (load "../root/coin.pact")
 (env-exec-config ["DisablePact44"])
-(load "./marm-v2/marmalade/root/ns.pact")
+(load "../marm-v2/marmalade/root/ns.pact")
 (commit-tx)
 
 (begin-tx)
@@ -156,15 +156,22 @@
   (commit-tx)
 
   (begin-tx "mint")
+  (use marmalade.ledger)
+(use marmalade.policy-manager)
   (env-sigs [
-    { 'key: 'account
-     ,'caps: [(marmalade.ledger.MINT "t:u5kvgh1HISROlQGLTQGF7gTzyjBtXxSe7BQjI3cPcC8" "account" 1.0)]
+    { 'key: 'bob
+     ,'caps: [(marmalade.ledger.MINT (create-token-id { 'uri: "ipfs://howdydoda", 'precision: 0, 'policies: util.DEFAULT_POLICIES }) "bob" 1.0)]
      }])
-
-     (env-sigs [
-      { 'key: 'bob
-       ,'caps: [(marmalade.ledger.MINT "t:u5kvgh1HISROlQGLTQGF7gTzyjBtXxSe7BQjI3cPcC8" "bob" 1.0)]
-       }])
+     (env-data {
+      "token-id": (create-token-id { 'uri: "ipfs://howdydoda", 'precision: 0, 'policies: util.DEFAULT_POLICIES } )
+     ,"account": "bob"
+     ,"mint-guard": {"keys": ["bob"], "pred": "keys-all"}
+      })
+    
+      ;  (expect "create a default token with quote-policy, non-fungible-policy"
+      ;  true
+      ;  (free.kadenai-minter.mint "bob" "ipfs://howdydoda" 0 util.DEFAULT_POLICIES ))
+      (free.kadenai-minter.mint "bob" "ipfs://howdydoda" 0 util.DEFAULT_POLICIES )
   ;  (expect "create a default token with quote-policy, non-fungible-policy"
   ;    true
   ;    (create-token (read-msg 'token-id) 0 "test-uri" util.DEFAULT_POLICIES ))
