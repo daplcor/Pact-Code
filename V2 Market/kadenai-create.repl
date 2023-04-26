@@ -44,7 +44,6 @@
         "pred": "keys-any"
       },
       "description": "test-description",
-      "rootUri": "https://example.com",
       "tiers": [
          {
           "tierId": "public",
@@ -129,80 +128,102 @@
 
 (commit-tx)
 
+(begin-tx)
 
-(begin-tx "create collection")
-(free.kadenai-create.create-collection (read-msg 'collection ) coin)
+(use kip.concrete-policy-v1 [QUOTE_POLICY NON_FUNGIBLE_POLICY ROYALTY_POLICY COLLECTION_POLICY])
+(module util GOV
+  (defcap GOV () true)
+
+  (defconst DEFAULT_CONCRETE_POLICY:object{kip.concrete-policy-v1.concrete-policy}
+    { 'quote-policy: true
+     ,'non-fungible-policy: true
+     ,'royalty-policy: false
+     ,'collection-policy:true
+    }
+  )
+  (defconst DEFAULT_POLICIES:object{kip.token-policy-v2.token-policies}
+    { 'concrete-policies:DEFAULT_CONCRETE_POLICY
+     ,'immutable-policies: []
+     ,'adjustable-policies:[]
+    })
+)
 (commit-tx)
 
-;  (begin-tx "Whitelist Operations")
-
-;  (expect-failure "add whitelist to collection"
-;    "Tx Failed: Keyset failure (keys-any): [ops]"  
-;    (free.ku-create.add-whitelist-to-collection "" [])
-;  )
-;  (expect-failure "add whitelist to collection"
-;    "Tx Failed: Keyset failure (keys-any): [creatorGuard]"  
-;    (free.ku-create.add-whitelist-creator "" [])
-;  )
-;  (expect-that "add whitelist to collection")
-;  "Tx Succeeded: Keyset success (keys-any): [ops]"  
-;  (free.ku-create.add-whitelist-to-collection "test-collection" [{"tierId":"tier0", "accounts":["alice"]}])
-;  (commit-tx)
-;  (begin-tx "mint token")
-;  (free.ku-create.mint "test-collection" "bob" 1)
-;  (commit-tx)
-
-
-;  (begin-tx "Managed account creation")
-;  (use free.ku-create)
-;  (env-events true)
-;  
-;  (env-sigs
-;    [{
-;      "key": "sally-key",
-;      "caps": [
-;        (free.ku-create.MANAGED "swag")
-      
-;        (coin.TRANSFER "sally" "swag" 50.0)
-      
-;      ]
-;    }])
-  ;  (env-keys ["bob-key"])
-  ;  (env-keys ["sally-key"])
-;  (env-keys ["alice-key"])
-;  (env-sigs
-;    [{
-;      "key": "alice-key",
-;      "caps": [
-;        (MANAGED "swag")
-;      ]
-;    }])
-;  (env-data 
-;    { 
-;      "alice-key": { "keys": ["alice-key"], "pred": "="}   
-;    }
-;    )
-  
-
-;  (expect-that "Creates a managed account"
-;  (= "Write suceeded")
-;  ((free.ku-create.create-managed-account "KU_BANK" (read-keyset "alice") "alice"))
-;  )
-;  (expect-that "Creates a managed account"
-;    (= "Write succeeded")
-;    (create-managed-account "swag" (read-keyset "alice-key") "alice")
-;  )
-;  (expect-that "Creates a managed account from k account"
-;    (= "Write succeeded")
-;    (create-managed-account-from-k "swag" "alice")
-;  )
-
-;  (expect-that "Add coin to managed account"
-;    (= "Write succeeded")
-;    (add-coin-to-managed-account "swag" coin)
-;  )
-
-;  (commit-tx)
+(begin-tx "create collection")
+(env-keys ["ku-admin" "ku-ops" "creatorGuard"])
+(env-data
+  {
+    "ku-admin": {
+      "keys": [
+        "ku-admin"
+      ],
+      "pred": "keys-any"
+    },
+    "ku-ops": {
+      "keys": [
+        "ku-ops"
+      ],
+      "pred": "keys-any"
+    },
+    "ku-bank": {
+      "keys": [
+        "ku-bank"
+      ],
+      "pred": "keys-all"
+    },
+    "bank-guard": {
+      "keys": [
+        "ku-admin"
+      ],
+      "pred": "keys-all"
+    },
+    "creatorGuard": {
+        "keys": [ "creatorGuard" ],
+        "pred": "keys-any"
+      },
+    "collection": {
+      "name": "test-collection",
+      "totalSupply": 15.0,
+      "provenance": "abc",
+      "category": "Artwork",
+      "creator": "bob",
+      "creatorGuard": {
+        "keys": [ "creatorGuard" ],
+        "pred": "keys-any"
+      },
+      "description": "test-description",
+      "tiers": [
+         {
+          "tierId": "public",
+          "tierType": "PUBLIC",
+          "startTime": {"time": "2023-01-03T00:00:00Z"},
+          "endTime": {"time": "2024-01-03T00:00:00Z"},
+          "cost": 50.0,
+          "limit": -1.0
+        }
+      ]
+    },
+    "collection-name": "test-collection",
+    "tier-data": [
+      {
+        "tierId": "free",
+        "accounts": ["bob"]
+      },
+      {
+        "tierId": "discount",
+        "accounts": ["bob", "alice"]
+      }
+    ],
+    "can-offer": true,
+    "can-buy": true,
+    "can-transfer": true,
+    "can-burn": true,
+    "can-xchain": true,
+    "upgrade": false
+  }
+)
+(free.kadenai-create.create-collection (read-msg 'collection ) coin)
+(commit-tx)
 
 
 (begin-tx "Add Bank Account")
@@ -219,14 +240,14 @@
 [{
   "key": "alice-key",
   "caps": [
-      (coin.TRANSFER "alice" (free.kadenai-create.get-SPLITTER-account) 60.0)
+      (coin.TRANSFER "alice" (free.kadenai-create.get-SPLITTER-account) 50.0)
   ]
 }])
 
 (free.kadenai-create.mint "test-collection" "alice" 1 ["bankAc","creator"])
-
+(env-gas "table")
 (expect-that "Amounts were transferred"
-  (= [950.0 50.0 1045.0])
+  (= [950.0 5.0 1045.0])
   [
     (coin.get-balance "alice")
     (coin.get-balance "BANK")

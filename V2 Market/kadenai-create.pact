@@ -80,16 +80,13 @@
 ; #################################################################
 
 ; NFT collections are stored in the nft-collections table.
-  ; An NFT collection is uniquely identified by its name across all k:accounts.
+  ; An NFT collection is uniquely identified by its name.
   ; The creator is the k:account of the original creator.
-  ; The name is the collection name, and also its id.
-  ; num-minted is the current number of NFTs that have been minted in this
-  ; collection.
-  ; max-size is the total number of NFTs in this collection.
-  ; mint-price is the price to mint each NFT in this collection.
-  ; mint-guard defines who can mint NFTs in this collection.
-  ; mint-royalties define who gets paid when NFTs in this collection are
-  ; minted.
+  ; totalSupply is the total number of NFTs in this collection.
+  ; categories are helpful for classifying collections.
+  ; provenance hash needs to be pre-computed and is a cryptographic hash
+  ; of the entire hash of tokens
+  ; tiers hold mint prices, qty allowed to mint, and start/end times.
   ; sale-royalties define who gets paid when NFTs in this collection are sold.
   (defschema collection
     @doc "Stores the name of the collection, the tiers, \
@@ -101,7 +98,6 @@
     creatorGuard:guard
     category:string
     provenance:string
-    rootUri:string
     description:string
     currentIndex:integer
     fungible:module{fungible-v2}
@@ -146,6 +142,12 @@
         mint-count:integer
       )
 
+      (defschema nft
+        id:string
+        owner:string
+      )
+      
+      (deftable nft-table:{nft})
 
   ; ============================================
   ; ==                 Tables                 ==
@@ -260,17 +262,17 @@
   )
 )
 
-(defun update-collection-uri
-  (
-    collection:string
-    uri:string
-  )
-  (with-capability (OPS)
-    (update collections collection
-      { "rootUri": uri }
-    )
-  )
-)
+;  (defun update-collection-uri
+;    (
+;      collection:string
+;      uri:string
+;    )
+;    (with-capability (OPS)
+;      (update collections collection
+;        { "rootUri": uri }
+;      )
+;    )
+;  )
 
 ; #######################################
 ;              Bank Info
@@ -338,8 +340,6 @@
     (defconst bRate 0.05)
     (defconst KDA_BANK_ACCOUNT:string "kuBank" )
     (defconst KDA_BANK_GUARD_NAME:string "free.kBank")
-    ;  (defun kda-bank-guard () (create-module-guard KDA_BANK_GUARD_NAME))
-    (defconst MAC "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce")
 
   ; ============================================
   ; ==           Mint Functionality           ==
@@ -537,54 +537,39 @@
 (defschema token-data
   @doc "The information necessary to mint the token on marmalade"
   precision:integer
-  scheme:string
+  uri:string
   data:string
   datum:object
-  policy:module{kip.token-policy-v1}
-)
-
-(defschema in-token-data
-  @doc "The information necessary to mint the token on marmalade"
-  scheme:string
-  data:string
-  datum:object
+  policy:module{kip.token-policy-v2}
 )
 
 (defun create-marmalade-token:string
   (
     account:string
-    guard:guard
-    mint-token-id:string
-    t-data:object{token-data}
+    uri:string
+    precision:integer
+    policies:object{kip.token-policy-v2.token-policies}
   )
   @doc "Requires Private OPS. Creates the token on marmalade using the supplied data"
   (require-capability (OPS_INTERNAL))
-
-  (bind t-data
-    { "precision":= precision
-    , "scheme":= scheme
-    , "data":= data
-    , "datum":= datum
-    , "policy":= policy
-    }
-    (let*
+; check and verify if I need to wrap this funciton in the require-cap
+      (let*
       (
-        (uri (kip.token-manifest.uri scheme data))
-        (datum-complete (kip.token-manifest.create-datum uri datum))
-        (manifest (kip.token-manifest.create-manifest uri [datum-complete]))
-        (token-id (concat ["t:" (at "hash" manifest)]))
+        (hash-id (hash-contents uri precision policies))
+        (token-id (concat ["t:" hash-id]))
+        (guard (at "guard"(coin.details account)))
       )
-      (update minted-tokens mint-token-id
-        { "revealed": true
-        , "hash": (at "hash" manifest)
-        }
-      )
+      ;  (update minted-tokens mint-token-id
+      ;    { "revealed": true
+      ;    , "hash": (at "hash" manifest)
+      ;    }
+      ;  )
 
       (marmalade.ledger.create-token
         token-id
         precision
-        manifest
-        policy
+        uri
+        policies
       )
       ;  (install-capability (marmalade.ledger.MINT token-id account 1.0))
       (marmalade.ledger.mint
@@ -593,46 +578,52 @@
         guard
         1.0
       )
+      ; Add NFT to the NFT table
+      (insert nft-table token-id
+        {
+          "id": token-id,
+          "owner": account
+        }
+      )
       token-id
     )
   )
-)
+
 
 (defun get-unrevealed-tokens:object{minted-token} ()
   @doc "Returns a list of unrevealed tokens."
   (select minted-tokens (where "revealed" false))
 )
 
-(defun reveal-token:string
-  (
-    m-token:object{minted-token}
-    t-data:object{in-token-data}
-    precision:integer
-    policy:module{kip.token-policy-v1}
-  )
-  @doc "Requires OPS. Reveals the token for the given account."
-  (with-capability (OPS)
-    (bind m-token
-      { "collection":= collection
-      , "token-id":= token-id
-      , "account":= account
-      , "guard":= guard
-      }
+;  (defun reveal-token:string
+;    (
+;      m-token:object{minted-token}
+;      precision:integer
+;      policy:module{kip.token-policy-v2}
+;    )
+;    @doc "Requires OPS. Reveals the token for the given account."
+;    (with-capability (OPS)
+;      (bind m-token
+;        { "collection":= collection
+;        , "token-id":= token-id
+;        , "account":= account
+;        , "guard":= guard
+;        }
 
-      (create-marmalade-token
-        account
-        guard
-        (get-mint-token-id collection token-id)
-        (+
-          t-data
-          { "precision": precision
-          , "policy": policy
-          }
-        )
-      )
-    )
-  )
-)
+;        (create-marmalade-token
+;          account
+;          guard
+;          (get-mint-token-id collection token-id)
+;          (+
+;            t-data
+;            { "precision": precision
+;            , "policy": policy
+;            }
+;          )
+;        )
+;      )
+;    )
+;  )
 
 (defun get-mint-token-id:string
   (
@@ -871,10 +862,6 @@
     )
   )
 
-  ;  (defun get-all-managed-accounts ()
-  ;  (select managed-accounts (constantly true))
-  ;  )
-
   (defun get-all-revealed:[object:{minted-token}]()
     @doc "Returns a list of all revealed tokens."
     (select minted-tokens (where "revealed" (= true))
@@ -918,9 +905,9 @@
      (select collections (constantly true))
    )
 
-(defun get-collection-uri:string (collection:string)
-  (at "rootUri" (read collections collection ["rootUri"]))
-)
+;  (defun get-collection-uri:string (collection:string)
+;    (at "rootUri" (read collections collection ["rootUri"]))
+;  )
 
 (defun get-totalSupply-for-collection:decimal (collection:string)
 (at "totalSupply" (read collections collection ["totalSupply"]))
@@ -935,27 +922,6 @@
   (keys collections)
 )
 
-;  (defun get-managed-account:object{managed-account} ()
-;    @doc "Returns the managed account for the contract"
-;    (let*
-;      (
-;        (account (get-account))
-;        (row (read managed-accounts account))
-;      )
-;      { "account": (at 'account row), "guard": (at 'guard row), "k-account": (at 'k-account row) }
-;  ))
-
-
-
-;  (defun get-managed-accounts:[object] (kAccount:string)
-;      @doc "Gets all of the managed accounts for the given k-account"
-;      (select managed-accounts ["account"] (where "k-account" (= kAccount)))
-;    )
-
-;    (defun get-mgd:[object] ()
-;      @doc "Gets the ku managed account"
-;      (select managed-accounts ["account"] (where "k-account" (= "k:d41a1081c93782f8bdbe0ee3fc426fd2dbbe83af11f428c78e934c4e646ac177")))
-;      )
 
 ; Look up NFT collection by name.  Query with /local
 (defun get-nft-collection:object{collection}
@@ -1000,30 +966,18 @@
 ;        Offline Collection Creation
 ; #############################################
 
-(defun create-offchain-multiple (array:[object])
-(map (offchain-token-id-and-manifest) array)
+;  (defun create-offchain-multiple (array:[object])
+;  (map (offchain-token-id-and-manifest) array)
+;  )
+
+(defun hash-contents:string
+  ( uri:string
+    precision:integer
+    policies:object{kip.token-policy-v2.token-policies}
+  )
+  (hash {'uri: uri, 'precision:precision, 'policies:policies})
 )
 
-(defun offchain-token-id-and-manifest:object (t-data:object)
-(let
-  (
-    (precision (at "precision" t-data))
-    (scheme (at "scheme" t-data))
-    (data (at "data" t-data))
-    (datum (at "datum" t-data))
-    (policy (at "policy" t-data))
-  )
-  (let*
-    (
-      (uri (kip.token-manifest.uri scheme data))
-      (datum-complete (kip.token-manifest.create-datum uri datum))
-      (manifest (kip.token-manifest.create-manifest uri [datum-complete]))
-      (token-id (format "t:{}" [(at 'hash manifest)]))
-    )
-    {"manifest": manifest, "token-id": token-id}
-  )
-)
-)
 
   (defun init ()
     (with-capability (GOVERNANCE)
@@ -1038,7 +992,7 @@
 (if (read-msg "upgrade")
 "Upgrade Complete"
 [
-  (creat-table collections)
+  (create-table collections)
   (create-table bankInfo)
   (create-table minted-tokens)
   (create-table whitelist-table)
