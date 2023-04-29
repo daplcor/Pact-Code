@@ -6,8 +6,7 @@
     (enforce-guard 'marmalade-admin ))
 
   (implements kip.token-policy-v2)
-  (use kip.concrete-policy-v1 [concrete-policy NON_FUNGIBLE_POLICY QUOTE_POLICY ROYALTY_POLICY])
-  (use kip.token-policy-v2 [token-policies token-info])
+  (use kip.token-policy-v2 [token-policies token-info concrete-policy NON_FUNGIBLE_POLICY QUOTE_POLICY ROYALTY_POLICY COLLECTION_POLICY])
 
   (defschema concrete-policy-list
     policy-field:string
@@ -17,7 +16,7 @@
   (deftable concrete-policy-table:{concrete-policy-list})
 
   (defconst CONCRETE_POLICY_V1_LIST
-    [NON_FUNGIBLE_POLICY QUOTE_POLICY ROYALTY_POLICY] )
+    [NON_FUNGIBLE_POLICY QUOTE_POLICY ROYALTY_POLICY COLLECTION_POLICY] )
 
   ;; schema to save policy list in table
   (defschema policies-list

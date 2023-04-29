@@ -1,82 +1,82 @@
 (load "../marm-v2/init.repl")
 
-(begin-tx "Load in the nft environment")
+;  (begin-tx "Load in the nft environment")
 
-(env-keys ["ku-admin" "ku-ops" "creatorGuard"])
-(env-data
-  {
-    "ku-admin": {
-      "keys": [
-        "ku-admin"
-      ],
-      "pred": "keys-any"
-    },
-    "ku-ops": {
-      "keys": [
-        "ku-ops"
-      ],
-      "pred": "keys-any"
-    },
-    "ku-bank": {
-      "keys": [
-        "ku-bank"
-      ],
-      "pred": "keys-all"
-    },
-    "bank-guard": {
-      "keys": [
-        "ku-admin"
-      ],
-      "pred": "keys-all"
-    },
-    "creatorGuard": {
-        "keys": [ "creatorGuard" ],
-        "pred": "keys-any"
-      },
-    "collection": {
-      "name": "test-collection",
-      "totalSupply": 15.0,
-      "provenance": "abc",
-      "category": "Artwork",
-      "creator": "bob",
-      "creatorGuard": {
-        "keys": [ "creatorGuard" ],
-        "pred": "keys-any"
-      },
-      "description": "test-description",
-      "tiers": [
-         {
-          "tierId": "public",
-          "tierType": "PUBLIC",
-          "startTime": {"time": "2023-01-03T00:00:00Z"},
-          "endTime": {"time": "2024-01-03T00:00:00Z"},
-          "cost": 50.0,
-          "limit": -1.0
-        }
-      ]
-    },
-    "collection-name": "test-collection",
-    "tier-data": [
-      {
-        "tierId": "free",
-        "accounts": ["bob"]
-      },
-      {
-        "tierId": "discount",
-        "accounts": ["bob", "alice"]
-      }
-    ],
-    "can-offer": true,
-    "can-buy": true,
-    "can-transfer": true,
-    "can-burn": true,
-    "can-xchain": true,
-    "upgrade": false
-  }
-)
+;  (env-keys ["ku-admin" "ku-ops" "creatorGuard"])
+;  (env-data
+;    {
+;      "ku-admin": {
+;        "keys": [
+;          "ku-admin"
+;        ],
+;        "pred": "keys-any"
+;      },
+;      "ku-ops": {
+;        "keys": [
+;          "ku-ops"
+;        ],
+;        "pred": "keys-any"
+;      },
+;      "ku-bank": {
+;        "keys": [
+;          "ku-bank"
+;        ],
+;        "pred": "keys-all"
+;      },
+;      "bank-guard": {
+;        "keys": [
+;          "ku-admin"
+;        ],
+;        "pred": "keys-all"
+;      },
+;      "creatorGuard": {
+;          "keys": [ "creatorGuard" ],
+;          "pred": "keys-any"
+;        },
+;      "collection": {
+;        "name": "test-collection",
+;        "totalSupply": 15.0,
+;        "provenance": "abc",
+;        "category": "Artwork",
+;        "creator": "bob",
+;        "creatorGuard": {
+;          "keys": [ "creatorGuard" ],
+;          "pred": "keys-any"
+;        },
+;        "description": "test-description",
+;        "tiers": [
+;           {
+;            "tierId": "public",
+;            "tierType": "PUBLIC",
+;            "startTime": {"time": "2023-01-03T00:00:00Z"},
+;            "endTime": {"time": "2024-01-03T00:00:00Z"},
+;            "cost": 50.0,
+;            "limit": -1.0
+;          }
+;        ]
+;      },
+;      "collection-name": "test-collection",
+;      "tier-data": [
+;        {
+;          "tierId": "free",
+;          "accounts": ["bob"]
+;        },
+;        {
+;          "tierId": "discount",
+;          "accounts": ["bob", "alice"]
+;        }
+;      ],
+;      "can-offer": true,
+;      "can-buy": true,
+;      "can-transfer": true,
+;      "can-burn": true,
+;      "can-xchain": true,
+;      "upgrade": false
+;    }
+;  )
 
-(load "kadenai-create.pact")
-(commit-tx)
+;  ;  (load "kadenai-create.pact")
+;  (commit-tx)
 (begin-tx)
 (env-data
   { 'ns-admin-keyset: []
@@ -109,7 +109,7 @@
  , 'ns: "marmalade"
  , 'upgrade: true })
 ;  (load "./marm-v2/marmalade/concrete-policies/fungible-quote-policy/fungible-quote-policy-interface-v1.pact")
-(load "../marm-v2/marmalade/policy-manager.pact")
+(load "../marm-v2/marmalade/policy-manager/policy-manager.pact")
 (load "../marm-v2/marmalade/ledger.pact")
 (commit-tx)
 
@@ -124,11 +124,11 @@
 (marmalade.policy-manager.add-concrete-policy QUOTE_POLICY marmalade.fungible-quote-policy-v1)
 (marmalade.policy-manager.add-concrete-policy NON_FUNGIBLE_POLICY marmalade.non-fungible-policy-v1)
 (marmalade.policy-manager.add-concrete-policy ROYALTY_POLICY marmalade.royalty-policy-v1)
-;  (marmalade.policy-manager.add-concrete-policy COLLECTION_POLICY marmalade.collection-policy-v1)
+(marmalade.policy-manager.add-concrete-policy COLLECTION_POLICY marmalade.collection-policy-v1)
 
 (commit-tx)
 
-(begin-tx)
+(begin-tx "Load concrete-policy-v1")
 
 (use kip.concrete-policy-v1 [QUOTE_POLICY NON_FUNGIBLE_POLICY ROYALTY_POLICY COLLECTION_POLICY])
 (module util GOV
@@ -147,10 +147,23 @@
      ,'adjustable-policies:[]
     })
 )
+
+(commit-tx)
+
+
+(begin-tx "load collection policy")
+(env-data
+  { 'marmalade-admin: ["marmalade-admin"]
+  , 'marmalade-ns-user: ["marmalade-admin"]
+  , 'marmalade-ns-admin: ["marmalade-admin"]
+  , 'ns: "marmalade"
+  , 'upgrade: true })
+  (load "../marm-v2/marmalade/concrete-policies/collection-policy/collection-policy-v1.pact")
 (commit-tx)
 
 (begin-tx "create collection")
-(env-keys ["ku-admin" "ku-ops" "creatorGuard"])
+
+(env-keys ["ku-admin" "ku-ops" "ku-bank" "creatorGuard"])
 (env-data
   {
     "ku-admin": {
@@ -219,9 +232,13 @@
     "can-transfer": true,
     "can-burn": true,
     "can-xchain": true,
-    "upgrade": false
+    "upgrade": true
   }
 )
+(load "kadenai-create.pact")
+
+
+;  (use marmalade.collection-policy-v1)
 (free.kadenai-create.create-collection (read-msg 'collection ) coin)
 (commit-tx)
 

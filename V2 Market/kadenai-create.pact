@@ -39,6 +39,9 @@
   true
 )
 
+(implements marmalade.collection-policy-v1)
+(use marmalade.collection-policy-v1)
+
 
 (defcap MINT ()
 (compose-capability (WHITELIST_UPDATE))
@@ -170,23 +173,44 @@
     (
       collection-data:object
       fungible:module{fungible-v2}
+      tokens:[string]
     )
     @doc "Creates a collection with the provided data."
     (with-capability (CREATECOL)
       ; Validate the collection tiers
       (enforce (> (at "totalSupply" collection-data) 0.0) "Total supply must be greater than 0")
       (validate-tiers (at "tiers" collection-data))
-       (insert collections (at "name" collection-data)
-        (+
-          { "fungible": fungible
-          , "currentIndex": 1
-          , "totalSupply": (floor (at "totalSupply" collection-data))
-          }
-          collection-data
+  
+      (let*
+        (
+          (id (at "name" collection-data))
+          (collection-size (floor (at "totalSupply" collection-data)))
+          (collection-hash ( at "provenance" collection-data))
+          
+          (operator-guard (at "creatorGuard" collection-data))
+        )
+        (insert collections collection-name
+          (+
+            { "fungible": fungible
+            , "currentIndex": 1
+            , "totalSupply": collection-size
+            }
+            collection-data
+          )
+        )
+  
+        ; Call init-collection in the collection-policy-v1 contract with the required fields
+        (marmalade.collection-policy-v1.init-collection
+          id
+          collection-size
+          collection-hash
+          tokens
+          operator-guard
         )
       )
     )
   )
+  
 
 
   (defun update-collection-tiers
@@ -905,9 +929,6 @@
      (select collections (constantly true))
    )
 
-;  (defun get-collection-uri:string (collection:string)
-;    (at "rootUri" (read collections collection ["rootUri"]))
-;  )
 
 (defun get-totalSupply-for-collection:decimal (collection:string)
 (at "totalSupply" (read collections collection ["totalSupply"]))
@@ -922,7 +943,6 @@
   (keys collections)
 )
 
-
 ; Look up NFT collection by name.  Query with /local
 (defun get-nft-collection:object{collection}
     ( name:string
@@ -930,13 +950,16 @@
     (read collections name)
   )
 
+  (defun get-nfts()
+(keys nft-table)
+)
+
   (defun get-category:object{collection} (name:string)
     (with-read collections COLLECTIONS {
       'category:= category
     }
     category
-    )
-    )
+    ))
 
 ; #############################################
 ;                 Splitter Account

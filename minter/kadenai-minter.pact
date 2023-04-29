@@ -29,7 +29,7 @@
       account:string
       uri:string
       precision:integer
-     policies:object{kip.token-policy-v2.token-policies}
+      policies:object{kip.token-policy-v2.token-policies}
     )
     @doc "Mints one token and sets owner from account field"
         ;  (with-capability (MINT))
@@ -85,12 +85,11 @@
   (hash {'uri: uri, 'precision:precision, 'policies:policies})
 )
 
+(defun get-nfts()
+(keys nft-table)
+  )
+
 )
-
-
-
-
-
 
 (if (read-msg "upgrade")
 "Upgrade Complete"

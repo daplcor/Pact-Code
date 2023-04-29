@@ -73,7 +73,7 @@
  , 'ns: "marmalade"
  , 'upgrade: true })
 ;  (load "./marm-v2/marmalade/concrete-policies/fungible-quote-policy/fungible-quote-policy-interface-v1.pact")
-(load "../marm-v2/marmalade/policy-manager.pact")
+(load "../marm-v2/marmalade/policy-manager/policy-manager.pact")
 (load "../marm-v2/marmalade/ledger.pact")
 (commit-tx)
 
@@ -130,7 +130,7 @@
       ],
       "pred": "keys-any"
     }, "upgrade": false})
-(load "ku-token-policy-v2.pact")
+;  (load "ku-token-policy-v2.pact")
 (commit-tx)
 
 (begin-tx "Load in the collection policy")
