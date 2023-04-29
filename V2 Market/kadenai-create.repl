@@ -119,7 +119,7 @@
 (load "../marm-v2/marmalade/concrete-policies/royalty-policy/royalty-policy-v1.pact")
 (load "../marm-v2/marmalade/concrete-policies/collection-policy/collection-policy-v1.pact")
 
-(use kip.concrete-policy-v1 [QUOTE_POLICY NON_FUNGIBLE_POLICY ROYALTY_POLICY COLLECTION_POLICY])
+(use kip.token-policy-v2 [QUOTE_POLICY NON_FUNGIBLE_POLICY ROYALTY_POLICY COLLECTION_POLICY])
 (marmalade.policy-manager.init (marmalade.ledger.ledger-guard))
 (marmalade.policy-manager.add-concrete-policy QUOTE_POLICY marmalade.fungible-quote-policy-v1)
 (marmalade.policy-manager.add-concrete-policy NON_FUNGIBLE_POLICY marmalade.non-fungible-policy-v1)
@@ -128,17 +128,17 @@
 
 (commit-tx)
 
-(begin-tx "Load concrete-policy-v1")
+(begin-tx "Load concrete-policy-config")
 
-(use kip.concrete-policy-v1 [QUOTE_POLICY NON_FUNGIBLE_POLICY ROYALTY_POLICY COLLECTION_POLICY])
+(use kip.token-policy-v2 [QUOTE_POLICY NON_FUNGIBLE_POLICY ROYALTY_POLICY COLLECTION_POLICY])
 (module util GOV
   (defcap GOV () true)
 
-  (defconst DEFAULT_CONCRETE_POLICY:object{kip.concrete-policy-v1.concrete-policy}
+  (defconst DEFAULT_CONCRETE_POLICY:object{kip.token-policy-v2.concrete-policy}
     { 'quote-policy: true
      ,'non-fungible-policy: true
      ,'royalty-policy: false
-     ,'collection-policy:true
+     ,'collection-policy:false
     }
   )
   (defconst DEFAULT_POLICIES:object{kip.token-policy-v2.token-policies}
@@ -157,7 +157,7 @@
   , 'marmalade-ns-user: ["marmalade-admin"]
   , 'marmalade-ns-admin: ["marmalade-admin"]
   , 'ns: "marmalade"
-  , 'upgrade: true })
+  , 'upgrade: false })
   (load "../marm-v2/marmalade/concrete-policies/collection-policy/collection-policy-v1.pact")
 (commit-tx)
 
@@ -232,7 +232,7 @@
     "can-transfer": true,
     "can-burn": true,
     "can-xchain": true,
-    "upgrade": true
+    "upgrade": false
   }
 )
 (load "kadenai-create.pact")

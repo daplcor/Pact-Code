@@ -5,7 +5,7 @@
 (load "./marmalade/manifest.pact")
 
 ; Load interfaces
-(load "./marmalade/concrete-policy-v1.pact")
+;  (load "./marmalade/concrete-policy-v1.pact")
 (load "./marmalade/token-policy-v2.pact")
 (load "./marmalade/poly-fungible-v3.pact")
 
