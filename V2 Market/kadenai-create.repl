@@ -239,7 +239,7 @@
 
 
 ;  (use marmalade.collection-policy-v1)
-(free.kadenai-create.create-collection (read-msg 'collection ) coin)
+;  (free.kadenai-create.create-collection (read-msg 'collection ) coin)
 (commit-tx)
 
 
@@ -274,3 +274,6 @@
 
 (commit-tx)
  
+(begin-tx "Gas Testing")
+;  (env-gasmodel "table") (env-gaslimit 10000) (env-gas 0) (marmalade.collection-policy-v1.get-collection "balla")  (env-gas)
+(commit-tx)

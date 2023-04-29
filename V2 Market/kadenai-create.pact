@@ -10,7 +10,7 @@
     (enforce-guard (keyset-ref-guard "free.ku-admin" ))
     (compose-capability (OPS_INTERNAL))
     )
-
+  
     (defcap OPS()
     (enforce-guard (keyset-ref-guard "free.ku-ops"))
     (compose-capability (OPS_INTERNAL))
@@ -39,8 +39,8 @@
   true
 )
 
-(implements marmalade.collection-policy-v1)
-(use marmalade.collection-policy-v1)
+;  (implements marmalade.collection-policy-v1)
+;  (use marmalade.collection-policy-v1)
 
 
 (defcap MINT ()
