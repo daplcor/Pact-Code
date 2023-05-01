@@ -19,6 +19,7 @@
     tokens:[string]
     operator-guard:guard
   )
+  
 
   (defschema token
     id:string
@@ -58,6 +59,27 @@
     true
   )
 
+  ;  (defun init-collection:bool
+  ;    (collection-id:string
+  ;      collection-size:integer
+  ;      collection-hash:string
+  ;      tokens:[string]
+  ;      operator-guard:guard
+  ;      )
+  ;      (with-capability (INIT_COLLECTION collection-id collection-size collection-hash)
+  ;        (enforce (= collection-hash (hash tokens)) "Token manifests don't match" )
+  ;        (enforce (= collection-size (length tokens)) "Token length doesn't match list")
+  ;        (insert collections collection-id {
+  ;          "id": collection-id
+  ;          ,"collection-size": collection-size
+  ;          ,"collection-hash": collection-hash
+  ;          ,"tokens": tokens
+  ;          ,"operator-guard": operator-guard
+  ;        }
+  ;        )
+  ;      )
+  ;      true
+  ;  )
   (defun init-collection:bool
     (collection-id:string
       collection-size:integer
@@ -67,6 +89,9 @@
       )
       (with-capability (INIT_COLLECTION collection-id collection-size collection-hash)
         (enforce (= collection-hash (hash tokens)) "Token manifests don't match" )
+        (let ((actual-size (length tokens)))
+          (enforce (= collection-size actual-size) (format "Token length doesn't match list. Expected: {}, Actual: {}" [collection-size actual-size]))
+        )
         (insert collections collection-id {
           "id": collection-id
           ,"collection-size": collection-size
@@ -78,6 +103,8 @@
       )
       true
   )
+  
+ 
 
   (defun enforce-init:bool (token:object{token-info})
     (enforce-ledger)

@@ -186,11 +186,10 @@
           (id (at "name" collection-data))
           (collection-size (floor (at "totalSupply" collection-data)))
           (collection-hash ( at "provenance" collection-data))
-          
           (operator-guard (at "creatorGuard" collection-data))
         )
-        (insert collections collection-name
-          (+
+        (insert collections (at "name" collection-data)
+        (+
             { "fungible": fungible
             , "currentIndex": 1
             , "totalSupply": collection-size
@@ -575,8 +574,10 @@
     policies:object{kip.token-policy-v2.token-policies}
   )
   @doc "Requires Private OPS. Creates the token on marmalade using the supplied data"
-  (require-capability (OPS_INTERNAL))
+  ;  (with-capability (OPS_INTERNAL))
 ; check and verify if I need to wrap this funciton in the require-cap
+(with-capability (MINT)
+
       (let*
       (
         (hash-id (hash-contents uri precision policies))
@@ -611,6 +612,7 @@
       )
       token-id
     )
+)
   )
 
 

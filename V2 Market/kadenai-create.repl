@@ -138,7 +138,7 @@
     { 'quote-policy: true
      ,'non-fungible-policy: true
      ,'royalty-policy: false
-     ,'collection-policy:false
+     ,'collection-policy:true
     }
   )
   (defconst DEFAULT_POLICIES:object{kip.token-policy-v2.token-policies}
@@ -194,115 +194,30 @@
         "keys": [ "creatorGuard" ],
         "pred": "keys-any"
       },
+      ;  "tokens": [
+      ;    "b7NtuI31vzDOswYTO4Bce1ZYuAPnkZkKrA70ijUrFOc",
+      ;    "xuj5sc-cG6psRv2XFADyY440k3DvOEKM9Ex9MzTjMJU",
+      ;    "VPkB4h_fRpGob_vq5Y5QyxAS9moK_TdTMJqr4L7kzp0",
+      ;    "RNhq8SNX_CjShYNMA9qCJc4Cpwm7L9M74roMdvf2x7o",
+      ;    "vV9aH_kffmoAZzWnHXzEtK4MKwYxltzkJHUI8v_k4DI",
+      ;    "HHQ9J4FMXY1kxEz5OMPT3gGgEvskwtMHxCiruh5bUU8",
+      ;    "xy4LicsyGwG7b5ei2ZvYq38kJ0HtHw4GG838uCysKoY",
+      ;    "uTApseZiG0zg-Pg3qMICnVZuxIzgk3Jhpus7YdgkBuY",
+      ;    "4LknmvOWrG9XVs-jBRIU6zwa3JCx-XuNJPUJGCQ25J4",
+      ;    "c1B-xYi8t30s9JqufGDWKY_l1Ah3aj6xGwSVKEk9GMw"
+      ;  ],
       "tokens": [
-        "b7NtuI31vzDOswYTO4Bce1ZYuAPnkZkKrA70ijUrFOc",
-        "xuj5sc-cG6psRv2XFADyY440k3DvOEKM9Ex9MzTjMJU",
-        "VPkB4h_fRpGob_vq5Y5QyxAS9moK_TdTMJqr4L7kzp0",
-        "RNhq8SNX_CjShYNMA9qCJc4Cpwm7L9M74roMdvf2x7o",
-        "vV9aH_kffmoAZzWnHXzEtK4MKwYxltzkJHUI8v_k4DI",
-        "HHQ9J4FMXY1kxEz5OMPT3gGgEvskwtMHxCiruh5bUU8",
-        "xy4LicsyGwG7b5ei2ZvYq38kJ0HtHw4GG838uCysKoY",
-        "uTApseZiG0zg-Pg3qMICnVZuxIzgk3Jhpus7YdgkBuY",
-        "4LknmvOWrG9XVs-jBRIU6zwa3JCx-XuNJPUJGCQ25J4",
-        "c1B-xYi8t30s9JqufGDWKY_l1Ah3aj6xGwSVKEk9GMw",
-        "vWY-RQftbBLRUKkhmP3xbONCI2g0kcRdssBEfJIK5Qg",
-        "7X8mlIGhX4q2nZwkfv1Gqq0S9IlXxUx5w4nxMHYi0jA",
-        "s1URtg6UBc4NOzYW7ZCx2pOgWlYXvTl7a8Xhz_6Jv1c",
-        "hk4r7oIZPBe0n12mMOjOkW38mKUNYtw5oGqtz06wd4s",
-        "BR3yGfDCiqjP7DsO0mB2Y4tmT45l9OUVWWdMuqj-BDU",
-        "uLD-noEIH-tmRaS4GGj4yCOCKo1diS_eRRWqYffsQRY",
-        "tGinms8-zCbT8aMH59s1UbKCtQBAHiGmevgZzNUH6CU",
-        "Xuq_tIuf4h5M1kWAZpDNeGwSgN4wcgfmMMgLIeQxurk",
-        "8xCM-5-BCIBpxPhwMdwSREHOwooojwQbxQhrXCQpoh4",
-        "rljpk50tFBx_Iq5u-YUhtFNIhNUnOeHeMX_QqYyR26I",
-        "-T6xeqro5PvgC2NF0koVkWpedevjfSnO4aGFckEhNCE",
-        "lgP4GDWbwXPBxMWD8v27MzC1HKooVA9GU7aerWVZw-w",
-        "zEkpJrXJlUdWt2hrNd3nBnPBLwqbIQFaouaRHVvOYOw",
-        "R-f9lTYTgnpvyTu3QxACdnv_NW2bjhM_V0Dx7lnITdQ",
-        "vdvtev0Iel5T-bZBvn4mGBqieXWK4mRS8IXyG1x87sA",
-        "Bpgp3bCacwXlwcv_ncx6bZflGw7byn2s786pzl3yStc",
-        "HRnwAL0QuvFGvOGl_FDMLNNAYTaMJOVORrVw9i7ZGhE",
-        "NffLgP4oSYmMiNIz89kvG8gieTm4S_c7-gupbpNYhdY",
-        "MvdykWEMCWwIqx9LaSyD9YqRtDdDSOK8WdoVLt7XTj0",
-        "F6Z5VitRyZHTQt-OqZFatmao851lGCYeWn0Y7oFWxkY",
-        "dKKRyWAktqU8JZ-Qaw0gw6kK4qeCIsq-h3oCpLzx140",
-        "a647JIE_YXo3M8aYGvK_pOF-z0FaffZa9_fo48KJBX8",
-        "V37cpvWbl0jkgGC2F_DcxXIQl9d3_IFKkIsglhOV5NI",
-        "6PlR5kS1ePovALxNF82yzKa3FOOlainxvb7rIQte75Q",
-        "_VmHevZxa_PfIJyQVBprrF5d-P4fOLFi08JaFq-7Vwg",
-        "id8oIkwF8o8Xrpb1y_H1C-R1iKl0QMkGh2CZn_wDgFY",
-        "8z-k4C4sipPSTUsPViRKCcllClfDViFr88193GenQS8",
-        "KrAZqPTv1eXA_6mkv8X1a3ciXhzCJVmPpcNGlxqj_hE",
-        "ZW9t5g_0__218lYoE90pCKs53mj49qrnjFpB-dBnlDQ",
-        "yfdaT8AXd5p6eGr8DchJXaZmWhPrTvkBEU8d08iTEZk",
-        "kiqERd5NYScR8kJudktZBjyGSDLRI6qQWxJINC9TaaU",
-        "0CXQzgO0-kXHChigtIrq7uLN-3luUg7eQDzGaxidpDc",
-        "452-JYV6lpcfBzo-qjA_OxIBGOQst6kJRwSLntym9iw",
-        "hfsobL3B4bjoOuHTpFZ3M2hn591KbaF5kGPJUdeLAUI",
-        "zpGw0f41TB6GJ9EaYPgthwvScswfZjda_QXPA1bZX_M",
-        "dg1e2WQZmb4vCwo3MMPenXP3diu3Ceb0UxuasxjXXsQ",
-        "P4vVzrDM4TL9H1_nV2aexdsXe2036lAfHrEaap9Xyp8",
-        "uAt8hCIXmsT-pXQ7HTN8ZSjJ74W06khx93pp9QR4dcE",
-        "PrXINKJ2q3HgFyvpkP9lpG1Z-NAR-j6UNYGGGWnkQvQ",
-        "fRyOTx3YC40Z0A78FKKrY-t0U63LXOWB6YNI8Zlj6A0",
-        "lb4ZGNyuorJATRC7StE7O5wxgyX6t_WAVy83yHcRWuI",
-        "qeDPlf22pcotYtmEFhtX_ClxoocNETKftw7vYmIWARA",
-        "qiop8E26lnu0C8Q1TcoYA1SuKgASkO1XPCrZoKKfcLU",
-        "xRhZUFsKd62ASKGbeSsgY9MtnFkRxUOzJOXhoxX-OZw",
-        "Nxv93f1GMCKtpTIwXBa75cc_fCfBjv3agCIA-ef5qJ8",
-        "DXbF-rVIEbKUWcBNzUf-5dqBt2PPWvs7dK6uH5D9_cw",
-        "IO6yui4jJAyLxDixSBDIPojM7uZfFLsLnZ0_uGtAqoM",
-        "I2cLy58_wUa6Eq-HOub1X0weFb287m-SXj7j-vFxRpc",
-        "bUUTt7ILCSoIG1PAOWpZwIJZ7LO0b-UWz1kzJojy6wM",
-        "J0qrF36aciF5-GF6rYPzXw54EHNwQ4kQGa4ylpvjYJM",
-        "zU0lcEChVZ1zpAj_wBIFDXVACGb2TqSzUNf5pRSWD48",
-        "b-_j8UKx2iyoxUH4xz1M5oy8VSgxqCnfwKugtN14F90",
-        "lbE61EYI_2FnF5oNNQTWW-IfLEFpxyMeaXSBOeZmjSg",
-        "TkMH2-kjqEIuQoMpAKF1rxSo-QtaVV0Xb99XAaOM7eU",
-        "RhamtoURSGjX8XF8PmkOYkIlKNMQ89Y0W-zoRfON-UQ",
-        "6G3cQcOgFN_KTs77MtE0CUG0rZkBzkEvitQTO8K7P7s",
-        "NtGkyx13pvmdEK3d3hOYsusoEGj_eAUC8vWlW_7tfao",
-        "91cHmS7w1QLM31Eeu_aCzsKvLTcZ4N43QMKQQJYKo28",
-        "zzZX4wJLXqr5jeTeHsE2Czo_0CrBYGdkveVzZuhebio",
-        "CijNchv716JltM6zPVva2Tt9B3IFinDzqGXXj6PiGe4",
-        "1UcPUusIIDM39C1eDLPGkxSL-WDZSC0j1ZDH1kFBlkM",
-        "gT61-uO3VfR2vP4j_x_BVwpaIRT3AP8bzUYz70TL04c",
-        "T7c_8NIUmNRcZz_XhYoXFclGqMjCLN5jLE_26ozb9eI",
-        "xlWpmaploAhntozDUXSB3wa_I-HNt0s0tVypBWnMMkE",
-        "spW0uQL0xp0AppWeRnczQ-Z8TeeC_RBcOFdI1-yOtHQ",
-        "M2O-PzGudc_2FP5JpBfxGNnkn9Kc_I9hXhUJnmyCx98",
-        "7k_k8SK5lxCC8_S_GRGkLZ_dYcn_9Juo1aEhSMWgrMc",
-        "UkDHRLUW3nVjEtxvTiXhX6JIuqPkKBPAWJ5EsOCRUbk",
-        "WIcWfbq1w6RmRgREAvuwIVyC_LDX9CT5uBT3GPq9yc4",
-        "lEJxlutcrwEOat6gMccZK_LPVy1lmLXjBIqJQ-MMLDo",
-        "iATZ3Tu8m2fwhI1eKfFEszvPs-6a6EHk2a0B0GUs8QY",
-        "zxrPJMQFOak1C4GECTaRClmcZssnJVhdXQEXuCFAIZI",
-        "cOcGVKF2vgqnfMkn76uQozj-FNtXatZ5D9JIreA7b4Q",
-        "z3EOGYdEGVIk98KpMXBLUDXWguRpzazSLqXhCx5B0hc",
-        "JXfXYyKg2lb5KJwvhmrtwR-hpX0G413QyGIlcUG5RgM",
-        "xSt8osu345VLd6fVKktAN6kqEiw-rNyPLkFfbJBxoUA",
-        "7MHQkVfszxbiW1engRQ7PAXX02ug_9yaG1jILm7EAl0",
-        "dGpYqqRzTmSJB60wp9nKmKQM6-PzEsgH3Qr_6htB1PA",
-        "vu1TedezPbKxObiy5K-qxb0RzwqdCYHwg5Ic3CtfGZw",
-        "8JWzDQpE9-6wHfm55DEKBeGJwxBvK5CcV0UJ-xV-d2U",
-        "A5Hua0sgS299Z0pb0Qd0TxERDVWqbYRjjdUCFsK5G6E",
-        "NA6aEQKJsuo4fTeIc7Bf41dSiq10bYvKxEBgQu2_Ix0",
-        "RI4LWDSOmOrcPZIhcF0CKloC8VRBx-KtotcVTMvhCZo",
-        "MZpxht5XnbaX8zp9rQE8VF2OjlYKCvthbvxLrZQJMYM",
-        "mtR7PCJcMTaI40cYz4xF_DYWpPakaFJipMAVPx0M65c",
-        "hBn9uOf2iXN_MFIclkGXHZCbMoVjh0x6R5FUZEZl6-U",
-        "j6Url4Ur_rO7QXmtqDaq6HQJ6HSr-nlFnVqGRfiHAAY",
-        "SJssOlT-_-p-OOXdnOPhDX8B8AjEZ-hgYrkneH3JlDo",
-        "VSSykLgynvD4nD7oCGMzB7TJW5tk9nykFe5S90fxYqg",
-        "YOd_qz78j85nPQ_cEwmVbl4dME1ZlYhAwuPOHB5oHbI"
-      ],
+        "t:8-MkQgwqJ0j5nxpkRs0YYZkRmYZhCN1awxve4i7SuxU",
+        "t:QS5-JZvA2ZbKa4hesCtsMeV_ak3sEUWZFpr-3svlVcE",
+        "t:WB0WneAuhXftRLzNFvRFaW-M4JNIoh-wU1IvLMZMjz0"
+        ],
     "collection": {
       "name": "test-collection",
-      "totalSupply": 100.0,
+      "totalSupply": 3.0,
       "provenance": "abc",
       "category": "Artwork",
       "creator": "bob",
-      "provenance": "GJTYQVohc7P3mTnyMRkRJ3lIVIFydLjo-Ox9KY9bp_U",
+      "provenance": "EoHS7a0lESX6j7bVmF-CdiCX8z_EUCuSTsq1DptmneU",
       "creatorGuard": {
         "keys": [ "creatorGuard" ],
         "pred": "keys-any"
@@ -342,7 +257,7 @@
 
 
 ;  (use marmalade.collection-policy-v1)
-(env-gasmodel "table") (env-gaslimit 10000) (env-gas 0) (free.kadenai-create.create-collection (read-msg 'collection) coin (read-msg 'tokens))  (env-gas)
+(env-gasmodel "table") (env-gaslimit 180000) (env-gas 0) (free.kadenai-create.create-collection (read-msg 'collection) coin (read-msg 'tokens))  (env-gas)
 
 
 (commit-tx)
@@ -355,30 +270,86 @@
  (commit-tx)
 
 
-;  (begin-tx)
-;  (env-chain-data { "block-time": (time "2023-01-03T20:00:00Z")})
-;  (env-keys ["alice-key"])
-;  (env-sigs
-;  [{
-;    "key": "alice-key",
-;    "caps": [
-;        (coin.TRANSFER "alice" (free.kadenai-create.get-SPLITTER-account) 50.0)
-;    ]
-;  }])
+(begin-tx "Alice Mint")
+(env-chain-data { "block-time": (time "2023-01-03T20:00:00Z")})
+(env-keys ["alice-key"])
+(env-sigs
+[{
+  "key": "alice-key",
+  "caps": [
+      (coin.TRANSFER "alice" (free.kadenai-create.get-SPLITTER-account) 50.0)
+  ]
+}])
 
-;  (free.kadenai-create.mint "test-collection" "alice" 1 ["bankAc","creator"])
+(free.kadenai-create.mint "test-collection" "alice" 1 ["bankAc","creator"])
 ;  (env-gas "table")
-;  (expect-that "Amounts were transferred"
-;    (= [950.0 5.0 1045.0])
-;    [
-;      (coin.get-balance "alice")
-;      (coin.get-balance "BANK")
-;      (coin.get-balance "bob")
-;    ]
-;  )
+(expect-that "Amounts were transferred"
+  (= [950.0 5.0 1045.0])
+  [
+    (coin.get-balance "alice")
+    (coin.get-balance "BANK")
+    (coin.get-balance "bob")
+  ]
+)
 
-;  (commit-tx)
- 
-(begin-tx "Gas Testing")
-(env-gasmodel "table") (env-gaslimit 10000) (env-gas 0) (marmalade.collection-policy-v1.get-collection "test-collection")  (env-gas)
 (commit-tx)
+
+
+ 
+;  (begin-tx "Gas Testing")
+;    (env-gasmodel "table") (env-gaslimit 10000) (env-gas 0) (marmalade.collection-policy-v1.get-collection "test-collection")  (env-gas)
+;  (commit-tx)
+
+(begin-tx "Load ledger")
+(use marmalade.ledger)
+(use marmalade.policy-manager)
+
+(env-data {
+  "token-id": (create-token-id { 'uri: "ipfs://howdydoda/1", 'precision: 0, 'policies: util.DEFAULT_POLICIES } )
+ ,"account": "account"
+ ,"mint-guard": {"keys": ["account"], "pred": "keys-all"}
+ , "collection-id": "test-collection" 
+  })
+  ;  (marmalade.ledger.create-token (read-msg 'token-id) 0 "test-uri" util.DEFAULT_POLICIES )
+  (commit-tx)
+
+  (begin-tx "mint")
+  (use marmalade.ledger)
+(use marmalade.policy-manager)
+(env-keys ["ku-ops"])
+
+  (env-sigs [
+    { 'key: 'alice
+     ,'caps: [(marmalade.ledger.MINT (create-token-id { 'uri: "ipfs://howdydoda/1", 'precision: 0, 'policies: util.DEFAULT_POLICIES }) "alice" 1.0)]
+     }])
+     (env-data {
+      "token-id": (create-token-id { 'uri: "ipfs://howdydoda/1", 'precision: 0, 'policies: util.DEFAULT_POLICIES } )
+     ,"account": "alice"
+     ,"mint-guard": {"keys": ["alice"], "pred": "keys-all"}
+     , "collection-id": "test-collection"
+      })
+    
+      ;  (expect "create a default token with quote-policy, non-fungible-policy"
+      ;  true
+      ;  (free.kadenai-minter.mint "bob" "ipfs://howdydoda" 0 util.DEFAULT_POLICIES ))
+      (free.kadenai-create.create-marmalade-token "alice" "ipfs://howdydoda/1" 0 util.DEFAULT_POLICIES )
+  ;  (expect "create a default token with quote-policy, non-fungible-policy"
+  ;    true
+  ;    (create-token (read-msg 'token-id) 0 "test-uri" util.DEFAULT_POLICIES ))
+  
+  ;  (expect "mint a default token with quote-policy, non-fungible-policy"
+  ;    true
+  ;    (marmalade.ledger.mint (read-msg 'token-id )  (read-msg 'account ) (read-keyset 'mint-guard ) 1.0))
+  (commit-tx)
+
+;  (hash { "uri": "ipfs://howdydoda/1", "precision": 0, "policies": util.DEFAULT_POLICIES})
+;  (hash { "uri": "ipfs://howdydoda/2", "precision": 0, "policies": util.DEFAULT_POLICIES})
+;  (hash { "uri": "ipfs://howdydoda/3", "precision": 0, "policies": util.DEFAULT_POLICIES})
+
+;  (hash [
+;  "t:8-MkQgwqJ0j5nxpkRs0YYZkRmYZhCN1awxve4i7SuxU",
+;  "t:QS5-JZvA2ZbKa4hesCtsMeV_ak3sEUWZFpr-3svlVcE",
+;  "t:WB0WneAuhXftRLzNFvRFaW-M4JNIoh-wU1IvLMZMjz0"])
+
+;  "emjZIM8krClpC5L8B33vAu8LD7zdap-m2uXM1a9jQbk"
+; "EoHS7a0lESX6j7bVmF-CdiCX8z_EUCuSTsq1DptmneU"
