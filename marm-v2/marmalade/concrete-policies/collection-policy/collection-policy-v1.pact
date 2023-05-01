@@ -48,11 +48,17 @@
     @event
     true)
 
-  (defcap MINT (token-id:string account:string account-guard:guard mint-guard:guard)
-    (enforce (validate-principal account-guard account) "Not a valid account")
-    (enforce-guard mint-guard)
-    true
-  )
+  ;  (defcap MINT (token-id:string account:string account-guard:guard mint-guard:guard)
+  ;    (enforce (validate-principal account-guard account) "Not a valid account")
+  ;    (enforce-guard mint-guard)
+  ;    true
+  ;  )
+
+  (defcap MINT (token-id:string account:string account-guard:guard mint-guard:guard )
+  (enforce (validate-principal account-guard account) "Not a valid account")
+  (enforce-guard mint-guard)
+  true
+)
 
   (defun enforce-ledger:bool ()
     (enforce-guard (marmalade.ledger.ledger-guard))
@@ -113,7 +119,7 @@
             (mint-guard:guard (read-msg 'mint-guard ))
             (collection-id:string (read-msg 'collection-id )) )
     ;;Enforce operator guard
-    (with-capability (OPERATOR token-id)
+    (with-capability (OPERATOR collection-id)
       ;;enforce one-off
       (enforce (= precision 0) "Invalid precision")
 
@@ -121,7 +127,8 @@
       (with-read collections collection-id {
         "tokens":= tokens
         }
-        (enforce (contains tokens token-id) "Token does not belong to collection")
+        ;  (enforce (contains tokens token-id) "Token does not belong to collection") 
+        "hi"
       )
 
       (insert tokens token-id
@@ -151,7 +158,7 @@
         }
         (enforce (= supply 0.0) "token has been minted")
 
-        (with-capability (MINT token-id account mint-guard)
+        (with-capability (MINT token-id account mint-guard )
           (update tokens token-id
             { "supply": 1.0
             })

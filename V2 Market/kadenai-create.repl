@@ -316,16 +316,20 @@
   (begin-tx "mint")
   (use marmalade.ledger)
 (use marmalade.policy-manager)
-(env-keys ["ku-ops"])
+(env-keys ["creatorGuard", "alice-key"])
 
   (env-sigs [
-    { 'key: 'alice
-     ,'caps: [(marmalade.ledger.MINT (create-token-id { 'uri: "ipfs://howdydoda/1", 'precision: 0, 'policies: util.DEFAULT_POLICIES }) "alice" 1.0)]
+    { 'key: 'creatorGuard
+     ,'caps: [(marmalade.collection-policy-v1.OPERATOR "test-collection"),
+     (marmalade.collection-policy-v1.MINT (create-token-id { 'uri: "ipfs://howdydoda/1", 'precision: 0, 'policies: util.DEFAULT_POLICIES }) "alice" (read-msg "alice-key") (read-msg "mint-guard")),
+     (marmalade.ledger.MINT (create-token-id { 'uri: "ipfs://howdydoda/1", 'precision: 0, 'policies: util.DEFAULT_POLICIES }) "alice" 1.0)
+    ]
      }])
      (env-data {
       "token-id": (create-token-id { 'uri: "ipfs://howdydoda/1", 'precision: 0, 'policies: util.DEFAULT_POLICIES } )
      ,"account": "alice"
-     ,"mint-guard": {"keys": ["alice"], "pred": "keys-all"}
+     ,"alice-key": {"keys": ["alice-key"], "pred": "keys-all"}
+     ,"mint-guard": {"keys": ["creatorGuard"], "pred": "keys-all"}
      , "collection-id": "test-collection"
       })
     

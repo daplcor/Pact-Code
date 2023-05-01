@@ -576,7 +576,7 @@
   @doc "Requires Private OPS. Creates the token on marmalade using the supplied data"
   ;  (with-capability (OPS_INTERNAL))
 ; check and verify if I need to wrap this funciton in the require-cap
-(with-capability (MINT)
+  (with-capability (MINT)
 
       (let*
       (
@@ -612,7 +612,7 @@
       )
       token-id
     )
-)
+  )
   )
 
 
@@ -1024,6 +1024,7 @@
   (create-table tiers)
   (create-table tdata)
   (create-table tier-data)
+  (create-table nft-table)
   ;  (create-table managed-accounts)
   (init)
 ]
