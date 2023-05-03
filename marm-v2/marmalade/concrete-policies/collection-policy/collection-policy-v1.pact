@@ -48,12 +48,6 @@
     @event
     true)
 
-  ;  (defcap MINT (token-id:string account:string account-guard:guard mint-guard:guard)
-  ;    (enforce (validate-principal account-guard account) "Not a valid account")
-  ;    (enforce-guard mint-guard)
-  ;    true
-  ;  )
-
   (defcap MINT (token-id:string account:string account-guard:guard mint-guard:guard )
   (enforce (validate-principal account-guard account) "Not a valid account")
   (enforce-guard mint-guard)
@@ -65,27 +59,6 @@
     true
   )
 
-  ;  (defun init-collection:bool
-  ;    (collection-id:string
-  ;      collection-size:integer
-  ;      collection-hash:string
-  ;      tokens:[string]
-  ;      operator-guard:guard
-  ;      )
-  ;      (with-capability (INIT_COLLECTION collection-id collection-size collection-hash)
-  ;        (enforce (= collection-hash (hash tokens)) "Token manifests don't match" )
-  ;        (enforce (= collection-size (length tokens)) "Token length doesn't match list")
-  ;        (insert collections collection-id {
-  ;          "id": collection-id
-  ;          ,"collection-size": collection-size
-  ;          ,"collection-hash": collection-hash
-  ;          ,"tokens": tokens
-  ;          ,"operator-guard": operator-guard
-  ;        }
-  ;        )
-  ;      )
-  ;      true
-  ;  )
   (defun init-collection:bool
     (collection-id:string
       collection-size:integer
@@ -110,7 +83,6 @@
       true
   )
   
- 
 
   (defun enforce-init:bool (token:object{token-info})
     (enforce-ledger)
@@ -127,10 +99,10 @@
       (with-read collections collection-id {
         "tokens":= tokens
         }
-        ;  (enforce (contains tokens token-id) "Token does not belong to collection") 
-        "hi"
-      )
-
+        ;  (enforce (contains tokens token-id) "Token does not belong to collection")
+                 (enforce (contains token-id tokens) (format "Token {} does not belong to collection {}. Tokens: {}" [token-id collection-id tokens])) 
+          )
+            
       (insert tokens token-id
         { "id" : token-id
           ,"collection-id" : collection-id
@@ -158,7 +130,7 @@
         }
         (enforce (= supply 0.0) "token has been minted")
 
-        (with-capability (MINT token-id account mint-guard )
+        (with-capability (MINT token-id account guard mint-guard )
           (update tokens token-id
             { "supply": 1.0
             })
@@ -166,7 +138,7 @@
         ))))
 
   ;;GET FUNCTIONS
-
+ 
   (defun get-policy:object{token} (token:object{token-info})
     (read tokens (at 'id token))
   )

@@ -114,7 +114,7 @@
         account:string
         guard:guard
         token-id:integer
-        hash:string
+        marmToken:string
         revealed:bool
       )
 
@@ -551,7 +551,7 @@
       , "account": account
       , "guard": guard
       , "token-id": token-id
-      , "hash": ""
+      , "marmToken": ""
       , "revealed": false
       }
     )
@@ -561,8 +561,6 @@
   @doc "The information necessary to mint the token on marmalade"
   precision:integer
   uri:string
-  data:string
-  datum:object
   policy:module{kip.token-policy-v2}
 )
 
@@ -571,6 +569,7 @@
     account:string
     uri:string
     precision:integer
+    mint-token-id:string
     policies:object{kip.token-policy-v2.token-policies}
   )
   @doc "Requires Private OPS. Creates the token on marmalade using the supplied data"
@@ -584,11 +583,11 @@
         (token-id (concat ["t:" hash-id]))
         (guard (at "guard"(coin.details account)))
       )
-      ;  (update minted-tokens mint-token-id
-      ;    { "revealed": true
-      ;    , "hash": (at "hash" manifest)
-      ;    }
-      ;  )
+      (update minted-tokens mint-token-id
+        { "revealed": true
+        , "marmToken": token-id
+        }
+      )
 
       (marmalade.ledger.create-token
         token-id
