@@ -46,10 +46,7 @@
   { 'ns-admin-keyset: []
   , 'ns-genesis-keyset:[]
   , 'ns-operate-keyset:[] })
-;  (load "../root/fungible-v2.pact")
-;  (load "../root/fungible-xchain-v1.pact")
-;  (load "../root/gas-payer-v1.pact")
-;  (load "../root/coin.pact")
+
 (env-exec-config ["DisablePact44"])
 (load "../marm-v2/marmalade/root/ns.pact")
 (commit-tx)
@@ -72,7 +69,6 @@
  , 'marmalade-ns-admin: ["marmalade-admin"]
  , 'ns: "marmalade"
  , 'upgrade: true })
-;  (load "./marm-v2/marmalade/concrete-policies/fungible-quote-policy/fungible-quote-policy-interface-v1.pact")
 (load "../marm-v2/marmalade/policy-manager/policy-manager.pact")
 (load "../marm-v2/marmalade/ledger.pact")
 (commit-tx)
@@ -88,7 +84,7 @@
 (marmalade.policy-manager.add-concrete-policy QUOTE_POLICY marmalade.fungible-quote-policy-v1)
 (marmalade.policy-manager.add-concrete-policy NON_FUNGIBLE_POLICY marmalade.non-fungible-policy-v1)
 (marmalade.policy-manager.add-concrete-policy ROYALTY_POLICY marmalade.royalty-policy-v1)
-;  (marmalade.policy-manager.add-concrete-policy COLLECTION_POLICY marmalade.collection-policy-v1)
+;  (marmalade.policy-manager.add-concrete-policy COLLECTION_POLICY marmalade.collection-policy-v1) Not needed for single token
 
 (commit-tx)
 
@@ -130,11 +126,6 @@
       ],
       "pred": "keys-any"
     }, "upgrade": false})
-;  (load "ku-token-policy-v2.pact")
-(commit-tx)
-
-(begin-tx "Load in the collection policy")
-(load "./collection-policy.pact")
 (commit-tx)
 
 (begin-tx "Load Minter Test")
@@ -152,7 +143,6 @@
  ,"account": "account"
  ,"mint-guard": {"keys": ["account"], "pred": "keys-all"}
   })
-  ;  (marmalade.ledger.create-token (read-msg 'token-id) 0 "test-uri" util.DEFAULT_POLICIES )
   (commit-tx)
 
   (begin-tx "mint")
@@ -168,15 +158,6 @@
      ,"mint-guard": {"keys": ["bob"], "pred": "keys-all"}
       })
     
-      ;  (expect "create a default token with quote-policy, non-fungible-policy"
-      ;  true
-      ;  (free.kadenai-minter.mint "bob" "ipfs://howdydoda" 0 util.DEFAULT_POLICIES ))
-      (free.kadenai-minter.mint "bob" "ipfs://howdydoda" 0 util.DEFAULT_POLICIES )
-  ;  (expect "create a default token with quote-policy, non-fungible-policy"
-  ;    true
-  ;    (create-token (read-msg 'token-id) 0 "test-uri" util.DEFAULT_POLICIES ))
-  
-  ;  (expect "mint a default token with quote-policy, non-fungible-policy"
-  ;    true
-  ;    (marmalade.ledger.mint (read-msg 'token-id )  (read-msg 'account ) (read-keyset 'mint-guard ) 1.0))
+         (free.kadenai-minter.mint "bob" "ipfs://howdydoda" 0 util.DEFAULT_POLICIES )
+   
   (commit-tx)

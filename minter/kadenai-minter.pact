@@ -32,9 +32,8 @@
       policies:object{kip.token-policy-v2.token-policies}
     )
     @doc "Mints one token and sets owner from account field"
-        ;  (with-capability (MINT))
-
-    ;  (enforce (= precision 0))
+       
+    (enforce (= 0 precision) "Precision must be 0")
     ;  (enforce (marmalade.ledger.is-authorized account) "Unauthorized")
   (with-capability (MINT)
     (let*
@@ -71,12 +70,7 @@
   )
     
 
-;  (defun init ()
-;  (with-capability (GOVERNANCE)
-;    ;  (coin.create-account KDA_BANK_ACCOUNT (kda-bank-guard))
-;    (coin.create-account (get-SPLITTER-account) (create-SPLITTER-guard))
-;  )
-;  )
+
 (defun hash-contents:string
   ( uri:string
     precision:integer
@@ -95,7 +89,5 @@
 "Upgrade Complete"
 [
 (create-table nft-table)
-
-;  (init)
 ]
 )

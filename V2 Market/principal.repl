@@ -1,0 +1,13 @@
+(begin-tx "Principal Test")
+(env-data
+    { 'ns-admin-keyset: []
+    , 'ns-genesis-keyset:[]
+    , 'ns-operate-keyset:[]
+    , "free.kai-admin":[]
+    , "free.kai-ops":[]
+})
+  (env-exec-config ["DisablePact44"])
+  (load "../marm-v2/marmalade/root/ns.pact")
+
+  (define-namespace (ns.create-principal-namespace "kai" (read-keyset "free.kai-admin") (read-keyset "free.kai-ops")))
+  (commit-tx)
