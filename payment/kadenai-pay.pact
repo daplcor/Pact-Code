@@ -12,7 +12,7 @@
     (defcap OPS()
     (enforce-guard (keyset-ref-guard "free.ku-ops"))
        )
-jf
+
     (defcap PAYER()
     (enforce-guard (at 'creatorGuard (read collections collection ['creatorGuard ])))
       "Must have an active creatorGuard stored"
