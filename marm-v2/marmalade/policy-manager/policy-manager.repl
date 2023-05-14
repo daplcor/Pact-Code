@@ -18,8 +18,11 @@
  , 'marmalade-ns-admin: ["marmalade-admin"]
  , 'ns: "marmalade"
  , 'upgrade: false })
-; (load "../kip/concrete-policy-v1.pact")
+
+(load "../kip/manifest.pact")
+(load "../kip/token-policy-v1.pact")
 (load "../kip/token-policy-v2.pact")
+(load "../kip/poly-fungible-v2.pact")
 (load "../kip/poly-fungible-v3.pact")
 
 
@@ -48,7 +51,7 @@
 (load "../concrete-policies/fungible-quote-policy/fungible-quote-policy-interface-v1.pact")
 (load "../policy-manager/policy-manager.pact")
 (load "../ledger.pact")
-(load "../marmalade-util/marmalade-util.pact")
+(load "../marmalade-util/util-v1.pact")
 (commit-tx)
 
 (begin-tx "load concrete-polices")
@@ -67,20 +70,30 @@
 
 (commit-tx)
 
+(begin-tx "load regular polices")
+(load "../policies/fixed-issuance-policy/fixed-issuance-policy-v1.pact")
+(load "../policies/guard-policy/guard-policy-v1.pact")
+(load "../policies/onchain-manifest-policy/onchain-manifest-policy-v1.pact")
+(load "../policies/migration-policy/migration-policy-v1.pact")
+
+(commit-tx)
 
 (begin-tx)
 (use marmalade.ledger)
 (use marmalade.policy-manager)
-(use marmalade.util)
+(use marmalade.util-v1)
 
 (env-data {
   "token-id": (create-token-id { 'uri: "test-uri", 'precision: 0, 'policies: (create-default-policies DEFAULT) } )
  ,"account": "account"
+ ,"nfp-mint-guard": {"keys": ["account"], "pred": "keys-all"}
  ,"mint-guard": {"keys": ["account"], "pred": "keys-all"}
   })
 (env-sigs [
   { 'key: 'account
-   ,'caps: [(marmalade.ledger.MINT "t:u5kvgh1HISROlQGLTQGF7gTzyjBtXxSe7BQjI3cPcC8" "account" 1.0)]
+   ,'caps: [(marmalade.ledger.MINT "t:u5kvgh1HISROlQGLTQGF7gTzyjBtXxSe7BQjI3cPcC8" "account" 1.0)
+            (marmalade.non-fungible-policy-v1.MINT "t:u5kvgh1HISROlQGLTQGF7gTzyjBtXxSe7BQjI3cPcC8")
+   ]
    }])
 
 (expect "create a default token with quote-policy, non-fungible-policy"
@@ -96,7 +109,7 @@
 (begin-tx "start an offer")
 (env-hash (hash "offer-0"))
 (use marmalade.ledger)
-(use marmalade.util)
+(use marmalade.util-v1)
 (test-capability (coin.COINBASE))
 (env-data {
   "seller-guard": {"keys": ["seller"], "pred": "keys-all"}
@@ -125,14 +138,15 @@
 (env-data { "recipient-guard": {"keys": ["seller"], "pred": "keys-all"}})
 
 (expect "events"
-[   {"name": "coin.TRANSFER","params": ["" "seller-account" 2.0]}
+  (format "{}" [[   {"name": "coin.TRANSFER","params": ["" "seller-account" 2.0]}
     {"name": "marmalade.ledger.OFFER","params": ["t:u5kvgh1HISROlQGLTQGF7gTzyjBtXxSe7BQjI3cPcC8" "account" 1.0 "2023-07-22T11:26:35Z"]}
     {"name": "marmalade.ledger.SALE","params": ["t:u5kvgh1HISROlQGLTQGF7gTzyjBtXxSe7BQjI3cPcC8" "account" 1.0 "2023-07-22T11:26:35Z" "C1vw1eMf_DZV3oZjyinRIKrQV2rPMBMh3lydeduo8yg"]}
     {"name": "marmalade.fungible-quote-policy-v1.QUOTE","params": ["C1vw1eMf_DZV3oZjyinRIKrQV2rPMBMh3lydeduo8yg" "t:u5kvgh1HISROlQGLTQGF7gTzyjBtXxSe7BQjI3cPcC8" 1.0 2.0 2.0 {"fungible": coin,"price": 2.0,"recipient": "seller-account","recipient-guard": (read-keyset 'recipient-guard )}]}
     {"name": "marmalade.ledger.ACCOUNT_GUARD","params": ["t:u5kvgh1HISROlQGLTQGF7gTzyjBtXxSe7BQjI3cPcC8" "c:kojW5oDBdlmFg0jVWz_mdj1DxlL8OgeH-1OILa1YzzE" (create-capability-pact-guard (SALE_PRIVATE "C1vw1eMf_DZV3oZjyinRIKrQV2rPMBMh3lydeduo8yg"))]}
     {"name": "marmalade.ledger.TRANSFER","params": ["t:u5kvgh1HISROlQGLTQGF7gTzyjBtXxSe7BQjI3cPcC8" "account" "c:kojW5oDBdlmFg0jVWz_mdj1DxlL8OgeH-1OILa1YzzE" 1.0]}
-    {"name": "marmalade.ledger.RECONCILE","params": ["t:u5kvgh1HISROlQGLTQGF7gTzyjBtXxSe7BQjI3cPcC8" 1.0 {"account": "account","current": 0.0,"previous": 1.0} {"account": "c:kojW5oDBdlmFg0jVWz_mdj1DxlL8OgeH-1OILa1YzzE","current": 1.0,"previous": 0.0}]}]
-    (map (remove 'module-hash)  (env-events true)))
+    {"name": "marmalade.ledger.RECONCILE","params": ["t:u5kvgh1HISROlQGLTQGF7gTzyjBtXxSe7BQjI3cPcC8" 1.0 {"account": "account","current": 0.0,"previous": 1.0} {"account": "c:kojW5oDBdlmFg0jVWz_mdj1DxlL8OgeH-1OILa1YzzE","current": 1.0,"previous": 0.0}]}]])
+  (format "{}" [(map (remove "module-hash")  (env-events true))])
+)
 
 (env-data {
   "buyer": "buyer-account"
@@ -154,7 +168,6 @@
 
   ]}])
 
-(marmalade.ledger.account-guard "t:u5kvgh1HISROlQGLTQGF7gTzyjBtXxSe7BQjI3cPcC8" "c:kojW5oDBdlmFg0jVWz_mdj1DxlL8OgeH-1OILa1YzzE" )
 (env-hash (hash "offer-0"))
 
 (expect "Buy succeeds"

@@ -94,7 +94,6 @@
     (with-read quotes sale-id { 'id:= qtoken, 'spec:= spec:object{quote-spec} }
       (enforce (= qtoken (at 'id token)) "incorrect sale token")
 
-      ;  TODO: make this optional
       (bind spec
         { 'fungible := fungible:module{fungible-v2}
         , 'price := price:decimal
@@ -108,8 +107,14 @@
         (mk-fee:decimal (floor (* mk-fee-percentage price) (fungible::precision)))
         (escrow-account:string (at 'account (policy-manager.get-escrow-account sale-id)))
       )
-        (install-capability (fungible::TRANSFER escrow-account mk-account mk-fee))
-        (fungible::transfer escrow-account mk-account mk-fee)
+        (if (= "" mk-account)
+          [ ]
+          [
+            (install-capability (fungible::TRANSFER escrow-account mk-account mk-fee))
+            (fungible::transfer escrow-account mk-account mk-fee)
+          ]
+        )
+
         (let (
           (balance:decimal (fungible::get-balance escrow-account))
         )

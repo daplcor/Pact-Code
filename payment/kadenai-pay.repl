@@ -84,6 +84,9 @@
       ]
     }])
 (free.kadenai-pay.create-collection-with-payment (read-msg 'collection) coin (read-msg 'account))
+
+;  (free.kadenai-pay.create-collection (read-msg 'collection) coin )
+;  (free.kadenai-pay.update-payment "alice" "test-collection" 0.15 coin)
 (commit-tx)
 
 (begin-tx "calculate cost")

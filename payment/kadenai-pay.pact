@@ -4,7 +4,7 @@
 (define-keyset "free.ku-ops" (read-keyset "ku-ops"))
 
 (module kadenai-pay GOVERNANCE
-    
+  
     (defcap GOVERNANCE ()
     (enforce-guard (keyset-ref-guard "free.ku-admin" ))
        )
@@ -12,12 +12,14 @@
     (defcap OPS()
     (enforce-guard (keyset-ref-guard "free.ku-ops"))
        )
-
+jf
     (defcap PAYER()
     (enforce-guard (at 'creatorGuard (read collections collection ['creatorGuard ])))
       "Must have an active creatorGuard stored"
       (compose-capability (PAYMOD))
     )
+
+
 
     (defcap PAYMOD ()
     true
@@ -66,24 +68,35 @@
        "fungible": fungible
      }
    )
-   (create-collection collectionData fungible)
+  ;   (create-collection collectionData fungible)
+  (insert collections (at "name" collectionData)
+  (+
+    {
+      "fungible": fungible
+    , "totalSupply": (at "totalSupply" collectionData)
+    }
+    collectionData
+  )
+  )
    (update-payment account collectionName collectionCost fungible)
  )
 )
 
-    (defun create-collection:string
-       (collectionData:object
-        fungible:module{fungible-v2})
-        @doc "Creates a collection with the provided data"
-      (insert collections (at "name" collectionData)
-      (+
-        {
-          "fungible": fungible
-        , "totalSupply": (at "totalSupply" collectionData)
-        }
-        collectionData
-      )
-    ))
+    ;  (defun create-collection:string
+    ;     (collectionData:object
+    ;      fungible:module{fungible-v2})
+    ;      @doc "Creates a collection with the provided data"
+    ;      (with-capability (ADDCOL (at "name" collectionData))
+    ;    (insert collections (at "name" collectionData)
+    ;    (+
+    ;      {
+    ;        "fungible": fungible
+    ;      , "totalSupply": (at "totalSupply" collectionData)
+    ;      }
+    ;      collectionData
+    ;    )
+    ;    )
+    ;  ))
 
 (defun record-payment (payment:object{payment-table})
   (insert payments (at "name" payment) payment)
@@ -113,6 +126,7 @@
   )
 
   (defun update-collection-payment-status (name:string paid:bool)
+  
   (with-read collections name 
     { "paid":= oldPaid }
     (enforce (not (= name "")) "Collection not found.")

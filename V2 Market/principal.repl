@@ -9,5 +9,5 @@
   (env-exec-config ["DisablePact44"])
   (load "../marm-v2/marmalade/root/ns.pact")
 
-  (define-namespace (ns.create-principal-namespace "kai" (read-keyset "free.kai-admin") (read-keyset "free.kai-ops")))
+  (define-namespace "kai" (read-keyset "free.kai-admin") (read-keyset "free.kai-ops"))
   (commit-tx)

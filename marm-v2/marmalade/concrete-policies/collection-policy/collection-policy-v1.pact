@@ -14,24 +14,20 @@
 
   (defschema collection
     id:string
-    collection-size:integer
-    collection-hash:string
-    tokens:[string]
+    name:string
+    size:integer
+    max-size:integer
     operator-guard:guard
   )
-  
 
   (defschema token
     id:string
     collection-id:string
-    supply:decimal
     mint-guard:guard
   )
 
   (deftable collections:{collection})
   (deftable tokens:{token})
-
-  (defcap INTERNAL () true)
 
   (defcap OPERATOR (collection-id:string)
     (with-read collections collection-id {
@@ -40,75 +36,68 @@
       (enforce-guard operator-guard))
   )
 
-  (defcap INIT_COLLECTION:bool (collection-id:string collection-size:integer collection-hash:string)
+  (defcap COLLECTION:bool (collection-id:string collection-name:string collection-size:integer)
     @event
     true)
 
-  (defcap RESERVE_TOKEN:bool (collection-id:string token-id:string account:string account-guard:guard )
-    @event
-    true)
+  (defcap MINT (token-id:string)
+    @managed
+    (with-read tokens token-id {
+      'mint-guard:= mint-guard
+      }
+    (enforce-guard mint-guard)
+    true
+    )
+  )
 
-  (defcap MINT (token-id:string account:string account-guard:guard mint-guard:guard )
-  (enforce (validate-principal account-guard account) "Not a valid account")
-  (enforce-guard mint-guard)
-  true
-)
+  (defconst CP_MINT_GUARD "cp-mint-guard")
 
   (defun enforce-ledger:bool ()
     (enforce-guard (marmalade.ledger.ledger-guard))
     true
   )
 
-  (defun init-collection:bool
-    (collection-id:string
+  (defun create-collection:bool
+    ( collection-name:string
       collection-size:integer
-      collection-hash:string
-      tokens:[string]
       operator-guard:guard
       )
-      (with-capability (INIT_COLLECTION collection-id collection-size collection-hash)
-        (enforce (= collection-hash (hash tokens)) "Token manifests don't match" )
-        (let ((actual-size (length tokens)))
-          (enforce (= collection-size actual-size) (format "Token length doesn't match list. Expected: {}, Actual: {}" [collection-size actual-size]))
-        )
-        (insert collections collection-id {
-          "id": collection-id
-          ,"collection-size": collection-size
-          ,"collection-hash": collection-hash
-          ,"tokens": tokens
-          ,"operator-guard": operator-guard
-        }
+      (enforce (>= collection-size 0) "Collection size must be positive")
+      (let ((collection-id:string (create-collection-id collection-name) ))
+        (with-capability (COLLECTION collection-id collection-name collection-size)
+          (insert collections collection-id {
+           "id": collection-id
+           ,"name": collection-name
+           ,"max-size": collection-size
+           ,"size": 0
+           ,"operator-guard": operator-guard
+          })
         )
       )
       true
   )
-  
 
   (defun enforce-init:bool (token:object{token-info})
     (enforce-ledger)
     (let* ( (token-id:string  (at 'id token))
-            (precision:integer (at 'precision token))
             (mint-guard:guard (read-msg 'mint-guard ))
-            (collection-id:string (read-msg 'collection-id )) )
+            (collection-id:string (read-msg "collection-id")) )
     ;;Enforce operator guard
     (with-capability (OPERATOR collection-id)
-      ;;enforce one-off
-      (enforce (= precision 0) "Invalid precision")
-
-      ;;Validate if token belongs to collection
       (with-read collections collection-id {
-        "tokens":= tokens
+        "max-size":= max-size
+       ,"size":= size
         }
-        ;  (enforce (contains tokens token-id) "Token does not belong to collection")
-                 (enforce (contains token-id tokens) (format "Token {} does not belong to collection {}. Tokens: {}" [token-id collection-id tokens])) 
-          )
-            
+      (if (= 0 max-size) "No size limit" (enforce (> max-size size) "Exceeds collection size"))
+
+      (update collections collection-id {
+        "size": (+ 1 size)
+      }))
       (insert tokens token-id
         { "id" : token-id
-          ,"collection-id" : collection-id
-          ,"supply": 0.0
-          ,"mint-guard": mint-guard
-        })
+         ,"collection-id" : collection-id
+         ,"mint-guard": mint-guard
+      })
     ))
   )
 
@@ -119,44 +108,18 @@
       amount:decimal
     )
     (enforce-ledger)
-    (enforce (= amount 1.0) "Invalid mint amount")
-
-    (let* ( (token-id:string  (at 'id token))
-            (collection-id:string (read-msg "collection-id")) )
-
-      (with-read tokens token-id {
-        'supply:= supply,
-        'mint-guard:= mint-guard
-        }
-        (enforce (= supply 0.0) "token has been minted")
-
-        (with-capability (MINT token-id account guard mint-guard )
-          (update tokens token-id
-            { "supply": 1.0
-            })
-            true
-        ))))
-
-  ;;GET FUNCTIONS
- 
-  (defun get-policy:object{token} (token:object{token-info})
-    (read tokens (at 'id token))
+    (with-capability (MINT (at 'id token))
+      true
+    )
   )
 
-  (defun get-collection:object{collection} (collection-id:string )
-    (read collections collection-id)
-  )
-
-  (defun get-token:object{token} (token-id:string)
-    (read tokens token-id)
-  )
 
   (defun enforce-burn:bool
     ( token:object{token-info}
       account:string
       amount:decimal
     )
-    (enforce false "BURN prohibited")
+    (enforce-ledger)
   )
 
   (defun enforce-offer:bool
@@ -165,7 +128,7 @@
       amount:decimal
       sale-id:string
     )
-    true
+    (enforce-ledger)
   )
 
   (defun enforce-buy:bool
@@ -176,7 +139,7 @@
       amount:decimal
       sale-id:string
     )
-    true
+    (enforce-ledger)
   )
 
   (defun enforce-withdraw:bool
@@ -185,7 +148,7 @@
       amount:decimal
       sale-id:string
     )
-    true
+    (enforce-ledger)
   )
 
   (defun enforce-transfer:bool
@@ -195,7 +158,7 @@
       receiver:string
       amount:decimal
     )
-    true
+    (enforce-ledger)
   )
 
   (defun enforce-crosschain:bool
@@ -206,6 +169,21 @@
       target-chain:string
       amount:decimal )
     (enforce false "Transfer prohibited")
+  )
+
+
+  ;;UTILITY FUNCTIONS
+
+  (defun create-collection-id (collection-name:string)
+    (format "collection:{}" [(hash collection-name)])
+  )
+
+  (defun get-collection:object{collection} (collection-id:string )
+    (read collections collection-id)
+  )
+
+  (defun get-token:object{token} (token-id:string)
+    (read tokens token-id)
   )
 
 )

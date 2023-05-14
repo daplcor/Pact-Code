@@ -14,7 +14,18 @@
     mint-guard:guard
   )
 
+  (defconst NFP_MINT_GUARD "nfp-mint-guard")
+
   (deftable mintguards:{mint-guard-schema})
+
+  (defcap MINT (token-id:string)
+    @managed
+    (with-read mintguards token-id
+      { "mint-guard":= mint-guard }
+    (enforce-guard mint-guard)
+    true
+    )
+  )
 
   (defun enforce-ledger:bool ()
      (enforce-guard (marmalade.ledger.ledger-guard))

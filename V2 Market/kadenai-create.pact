@@ -173,7 +173,6 @@
     (
       collection-data:object
       fungible:module{fungible-v2}
-      tokens:[string]
     )
     @doc "Creates a collection with the provided data."
     (with-capability (CREATECOL)
@@ -183,27 +182,32 @@
   
       (let*
         (
-          (id (at "name" collection-data))
+          (collection-name (at "name" collection-data))
           (collection-size (floor (at "totalSupply" collection-data)))
-          (collection-hash ( at "provenance" collection-data))
           (operator-guard (at "creatorGuard" collection-data))
+          (provenance (at "provenance" collection-data))
+          (category (at "category" collection-data))
+          (creator (at "creator" collection-data))
+          (creatorGuard (at "creatorGuard" collection-data))
         )
         (insert collections (at "name" collection-data)
         (+
             { "fungible": fungible
             , "currentIndex": 1
             , "totalSupply": collection-size
+            , "provenance": provenance
+            , "category": category
+            , "creator": creator
+            , "creatorGuard": creatorGuard
             }
             collection-data
           )
         )
   
         ; Call init-collection in the collection-policy-v1 contract with the required fields
-        (marmalade.collection-policy-v1.init-collection
-          id
+        (marmalade.collection-policy-v1.create-collection
+          collection-name
           collection-size
-          collection-hash
-          tokens
           operator-guard
         )
       )
