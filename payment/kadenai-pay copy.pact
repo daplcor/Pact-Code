@@ -13,19 +13,21 @@
     (enforce-guard (keyset-ref-guard "free.ku-ops"))
        )
 
-   
-    (defcap PAY_EVENT
-      (
-        collectionName:string
-        totalSupply:decimal
-        account:string
-        cost:decimal
-      )
-      @event true
-      )
+    (defcap PAYER()
+    (enforce-guard (at 'creatorGuard (read collections collection ['creatorGuard ])))
+      "Must have an active creatorGuard stored"
+      (compose-capability (PAYMOD))
+    )
+
+
+
+    (defcap PAYMOD ()
+    true
+    )
+ 
+    (defconst fungible "fungible")
   
     (defschema payment-table
-      id:string
       account:string
       cost:decimal
       name:string
@@ -47,50 +49,53 @@
   
     (deftable collections:{collection})
   
-    (defun getz ()
-    (select payments (constantly true))
-    )
+    ;  (use poly-fungible-v2)
   
     ;; Functions
- (defun create-collection-with-payment (collectionData:object fungible:module{fungible-v2} account:string )
+ (defun create-collection-with-payment (collectionData:object fungible:module{fungible-v2} account:string)
  (let*
    (
     (IMGCOST (get-image-fee))
      (collectionName (at "name" collectionData))
-     (totalSupply (at "totalSupply" collectionData))
+     (totalSupply (at "totalSupply" collectionData ))
      (collectionCost:decimal (floor (* totalSupply IMGCOST) 2))
-     (time (get-time))
-     (id (hash {"name": collectionName, "account": account, "totalSupply": totalSupply, "time": time}))
    )
-
-  (update-payment id account collectionName collectionCost fungible collectionData)
-
    (record-payment
+     {
+       "account": account,
+       "cost": collectionCost,
+       "name": collectionName,
+       "fungible": fungible
+     }
+   )
+  ;   (create-collection collectionData fungible)
+  (insert collections (at "name" collectionData)
+  (+
     {
-     "id": id,
-      "account": account,
-      "cost": collectionCost,
-      "name": collectionName,
       "fungible": fungible
+    , "totalSupply": (at "totalSupply" collectionData)
     }
+    collectionData
   )
-  (emit-event (PAY_EVENT collectionName totalSupply account collectionCost))
   )
+   (update-payment account collectionName collectionCost fungible)
+ )
 )
 
 (defun record-payment (payment:object{payment-table})
-  (insert payments (at "id" payment) payment)
+  (insert payments (at "name" payment) payment)
 )
 
-(defun update-payment (id:string account:string name:string cost:decimal fungible:module{fungible-v2} collectionData:object)
+  (defun update-payment (account:string name:string cost:decimal fungible:module{fungible-v2})
   @doc "Updates the payment data for collection"
-  
+  (with-read payments name 
+    { "name":= paymentName }
     (enforce (not (= account "")) "Account not found.")
-    (let*
+    (let
       (
         (bank (get-bank))
-        (totalSupply (at "totalSupply" collectionData))
-        (collectionCost (calculate-cost totalSupply))
+        (collectionCost (calculate-cost paymentName))
+        (totalSupply (with-read collections paymentName { "totalSupply":= totalSupply } totalSupply))
       )
       (enforce (> totalSupply 0.0) "Total supply should be greater than 0")
       (enforce (>= cost collectionCost) "Insufficient payment")
@@ -98,22 +103,31 @@
           (fungible::transfer account bank collectionCost)
           []
       )
-   
-      (insert collections (at "name" collectionData)
-      (+ 
-      {
-                 "paid": true
-                 , "fungible": fungible
-        }
-      collectionData 
+      (update payments name { "cost": collectionCost })
+      (with-read collections name 
+        { "paid":= oldPaid }
+        (enforce (not (= name "")) "Collection not found.")
+        (update collections name { "paid": true })
       )
+      ;  (update-collection-payment-status paymentName true)
       )
     )
-    )
-   
+  )
+
+;    (defun update-collection-payment-status (name:string paid:bool)
+  
+;    (with-read collections name 
+;      { "paid":= oldPaid }
+;      (enforce (not (= name "")) "Collection not found.")
+;      (update collections name { "paid": paid })
+;    )
+;  )
+
+
     (defun get-payment (name:string)
       (read payments name)
     )
+
 
 ; Getters for the absolute win!
 
@@ -123,20 +137,18 @@
 )
   
 
-  (defun calculate-cost (totalSupply)
+  (defun calculate-cost (name:string)
   @doc "Calculate the cost for images"
   (let (
     (IMGCOST (get-image-fee)))
+    (with-read collections name
+    { "totalSupply":= totalSupply }
     (*  totalSupply IMGCOST)
-  )
+  ))
 )
 
-  (defun get-time ()
-  (at "block-time" (chain-data)
-  ))
-
     ;; -------------------------------
-    ;;          String Values
+    ;;          Bank Details
     ;; -------------------------------
   
   
@@ -168,7 +180,7 @@
       (get-string-value BANK_ACCOUNT)
     )
 
-    ;; -------------------------------
+  ;; -------------------------------
     ;;          Bank Details
     ;; -------------------------------
   
@@ -210,6 +222,7 @@
   (create-table payments)
   (create-table values)
   (create-table fees)
+  ;  (init)
 ]
 )
   

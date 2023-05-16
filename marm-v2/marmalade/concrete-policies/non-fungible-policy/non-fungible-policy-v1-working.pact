@@ -35,7 +35,7 @@
     ( token:object{token-info}
     )
     (enforce-ledger)
-    (let ( (mint-guard:guard (read-keyset NFP_MINT_GUARD)))
+    (let ( (mint-guard:guard (read-keyset 'mint-guard )))
 
     (insert mintguards (at 'id token)
       { 'mint-guard: mint-guard })
@@ -49,11 +49,11 @@
       amount:decimal
     )
     (enforce-ledger)
-    (with-capability (MINT (at 'id token))
+    (let ((mint-guard (at 'mint-guard (read mintguards (at 'id token)))))
+      (enforce-guard mint-guard)
       (enforce (= amount 1.0) "Mint can only be 1")
       (enforce (= (at 'supply token) 0.0) "Only one mint allowed")
-    )
-  )
+  ))
 
   (defun enforce-burn:bool
     ( token:object{token-info}

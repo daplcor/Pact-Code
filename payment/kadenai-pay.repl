@@ -89,14 +89,14 @@
 ;  (free.kadenai-pay.update-payment "alice" "test-collection" 0.15 coin)
 (commit-tx)
 
-(begin-tx "calculate cost")
-(free.kadenai-pay.calculate-cost "test-collection")
-(commit-tx)
+;  (begin-tx "calculate cost")
+;  (free.kadenai-pay.calculate-cost "test-collection")
+;  (commit-tx)
 
 (begin-tx "Validate Collection paid = true")
 (free.kadenai-pay.get-collection-data "test-collection")
 (commit-tx)
 
-(begin-tx "confirm payment")
-(free.kadenai-pay.get-payment "test-collection")
-(commit-tx)
+;  (begin-tx "confirm payment")
+(free.kadenai-pay.get-payment "opuV_QeldGm3LFFEZQJbfDfZ4_P9rsqSr1nD7zM6jiA")
+;  (commit-tx)

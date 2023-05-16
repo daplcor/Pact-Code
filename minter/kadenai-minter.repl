@@ -150,12 +150,14 @@
 (use marmalade.policy-manager)
   (env-sigs [
     { 'key: 'bob
-     ,'caps: [(marmalade.ledger.MINT (create-token-id { 'uri: "ipfs://howdydoda", 'precision: 0, 'policies: util.DEFAULT_POLICIES }) "bob" 1.0)]
+     ,'caps: [(marmalade.ledger.MINT (create-token-id { 'uri: "ipfs://howdydoda", 'precision: 0, 'policies: util.DEFAULT_POLICIES }) "bob" 1.0),
+     (marmalade.non-fungible-policy-v1.MINT (create-token-id { 'uri: "ipfs://howdydoda", 'precision: 0, 'policies: util.DEFAULT_POLICIES }) )
+    ]
      }])
      (env-data {
       "token-id": (create-token-id { 'uri: "ipfs://howdydoda", 'precision: 0, 'policies: util.DEFAULT_POLICIES } )
      ,"account": "bob"
-     ,"mint-guard": {"keys": ["bob"], "pred": "keys-all"}
+     ,"nfp-mint-guard": {"keys": ["bob"], "pred": "keys-all"}
       })
     
          (free.kadenai-minter.mint "bob" "ipfs://howdydoda" 0 util.DEFAULT_POLICIES )
