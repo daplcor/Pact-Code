@@ -1,2 +1,0 @@
-;;load policy manager, ledger, and all concrete policies
-(load "../../policy-manager/policy-manager.repl")

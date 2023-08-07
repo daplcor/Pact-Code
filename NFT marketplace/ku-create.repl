@@ -1,4 +1,4 @@
-(load "kda-env/init.repl")
+(load "../kda-env/init.repl")
 
 (begin-tx "Load in the nft environment")
 
@@ -77,7 +77,7 @@
 )
 
 (load "ku-create.pact")
-(load "ku-token-policy.pact")
+;  (load "ku-token-policy.pact")
 (commit-tx)
 
 

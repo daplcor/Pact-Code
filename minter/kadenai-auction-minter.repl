@@ -1,0 +1,362 @@
+(load "../marm-v2/init.repl")
+
+(begin-tx "Load in the nft environment")
+
+(env-keys ["ku-admin" "ku-ops" "creatorGuard"])
+(env-data
+  {
+    "ku-admin": {
+      "keys": [
+        "ku-admin"
+      ],
+      "pred": "keys-any"
+    },
+    "ku-ops": {
+      "keys": [
+        "ku-ops"
+      ],
+      "pred": "keys-any"
+    },
+    "ku-bank": {
+      "keys": [
+        "ku-bank"
+      ],
+      "pred": "keys-all"
+    },
+    "bank-guard": {
+      "keys": [
+        "ku-admin"
+      ],
+      "pred": "keys-all"
+    },
+    "creatorGuard": {
+        "keys": [ "creatorGuard" ],
+        "pred": "keys-any"
+      },
+      "royalty_spec": {
+        "fungible": coin
+       ,"creator": 'bob
+       ,"creator-guard":  {"keys": ["creatorGuard"], "pred": "keys-all"}
+       ,"royalty-rate": 0.05
+      },
+      "upgrade": false
+  }
+)
+(commit-tx)
+
+(begin-tx)
+(env-data
+  { 'ns-admin-keyset: []
+  , 'ns-genesis-keyset:[]
+  , 'ns-operate-keyset:[] })
+
+(env-exec-config ["DisablePact44"])
+(load "../marm-v2/marmalade/root/ns.pact")
+(commit-tx)
+
+(begin-tx "LOAD UP MARM")
+(env-data
+ { 'marmalade-admin: ["marmalade-admin"]
+ , 'marmalade-ns-user: ["marmalade-admin"]
+ , 'marmalade-ns-admin: ["marmalade-admin"]
+ , 'ns: "marmalade"
+ , 'upgrade: false })
+ (env-sigs [
+   { 'key: 'marmalade-admin
+    ,'caps: []
+    }])
+(load "../marm-v2/marmalade/ns-marmalade.pact")
+(env-data
+ { 'marmalade-admin: ["marmalade-admin"]
+ , 'marmalade-ns-user: ["marmalade-admin"]
+ , 'marmalade-ns-admin: ["marmalade-admin"]
+ , 'ns: "marmalade"
+ , 'upgrade: false })
+;  (load "../marm-v2/marmalade/policy-manager/policy-manager.pact")
+;  (load "../marm-v2/marmalade/ledger.pact")
+(commit-tx)
+
+(begin-tx "load concrete-polices")
+(load "../marm-v2/marmalade/concrete-policies/fungible-quote-policy/fungible-quote-policy-v1.pact")
+(load "../marm-v2/marmalade/concrete-policies/non-fungible-policy/non-fungible-policy-v1.pact")
+(load "../marm-v2/marmalade/concrete-policies/royalty-policy/royalty-policy-v1.pact")
+(load "../marm-v2/marmalade/concrete-policies/guard-policy/guard-policy-v1.pact")
+
+(use kip.token-policy-v2 [QUOTE_POLICY NON_FUNGIBLE_POLICY GUARD_POLICY ROYALTY_POLICY COLLECTION_POLICY])
+(marmalade.policy-manager.init (marmalade.ledger.ledger-guard))
+(marmalade.policy-manager.add-concrete-policy QUOTE_POLICY marmalade.fungible-quote-policy-v1)
+(marmalade.policy-manager.add-concrete-policy NON_FUNGIBLE_POLICY marmalade.non-fungible-policy-v1)
+(marmalade.policy-manager.add-concrete-policy ROYALTY_POLICY marmalade.royalty-policy-v1)
+(marmalade.policy-manager.add-concrete-policy GUARD_POLICY marmalade.guard-policy-v1)
+
+;  (marmalade.policy-manager.add-concrete-policy COLLECTION_POLICY marmalade.collection-policy-v1) Not needed for single token
+
+(commit-tx)
+
+(begin-tx)
+
+(use kip.token-policy-v2 [token-policies concrete-policy QUOTE_POLICY NON_FUNGIBLE_POLICY ROYALTY_POLICY COLLECTION_POLICY])
+(module util GOV
+  (defcap GOV () true)
+
+  (defconst DEFAULT_CONCRETE_POLICY:object{kip.token-policy-v2.concrete-policy}
+    { 'quote-policy: true
+     ,'non-fungible-policy: true
+     ,'royalty-policy: false
+     ,'collection-policy:false
+     ,'guard-policy: true
+    }
+  )
+  (defconst DEFAULT_POLICIES:object{kip.token-policy-v2.token-policies}
+    { 'concrete-policies:DEFAULT_CONCRETE_POLICY
+     ,'immutable-policies: []
+     ,'adjustable-policies:[]
+    })
+
+
+  (defconst DEFAULT_ROYALTY_POLICY:object{kip.token-policy-v2.concrete-policy}
+    { 'quote-policy: true
+     ,'non-fungible-policy: true
+     ,'royalty-policy: true
+     ,'collection-policy:false
+     ,'guard-policy: true
+    }
+  )
+  (defconst ROYALTY_POLICIES:object{kip.token-policy-v2.token-policies}
+    { 'concrete-policies:DEFAULT_ROYALTY_POLICY
+     ,'immutable-policies: []
+     ,'adjustable-policies:[]
+    })
+)
+(commit-tx)
+
+(begin-tx)
+(env-keys ["ku-admin" "ku-ops" "creatorGuard"])
+
+(env-data
+  {
+    "ku-admin": {
+      "keys": [
+        "ku-admin"
+      ],
+      "pred": "keys-any"
+    },
+    "ku-ops": {
+      "keys": [
+        "ku-ops"
+      ],
+      "pred": "keys-any"
+    }, "upgrade": false})
+(commit-tx)
+
+(begin-tx "Load Minter Test")
+
+(load "./kadenai-minter.pact")
+
+(commit-tx)
+
+(begin-tx "Load ledger")
+(use marmalade.ledger)
+(use marmalade.policy-manager)
+
+(env-data {
+  "token-id": (create-token-id { 'uri: "test-uri", 'precision: 0, 'policies: util.DEFAULT_POLICIES } )
+ ,"account": "account"
+ ,"mint-guard": {"keys": ["account"], "pred": "keys-all"}
+  })
+  (commit-tx)
+
+  (begin-tx "mint")
+  (use marmalade.ledger)
+(use marmalade.policy-manager)
+  (env-sigs [
+    { 'key: 'bob
+     ,'caps: [(marmalade.ledger.MINT (create-token-id { 'uri: "ipfs://howdydoda", 'precision: 0, 'policies: util.DEFAULT_POLICIES }) "bob" 1.0)
+    ;   (marmalade.non-fungible-policy-v1.MINT (create-token-id { 'uri: "ipfs://howdydoda", 'precision: 0, 'policies: util.DEFAULT_POLICIES }) )
+    ]
+     }])
+     (env-data {
+      "token-id": (create-token-id { 'uri: "ipfs://howdydoda", 'precision: 0, 'policies: util.DEFAULT_POLICIES } )
+     ,"account": "bob"
+     , "policies": util.DEFAULT_POLICIES 
+     ,"nfp-mint-guard": {"keys": ["bob"], "pred": "keys-all"}
+      })
+    
+         (free.kadenai-minter.mint "bob" "ipfs://howdydoda" 0 util.DEFAULT_POLICIES )
+   
+  (commit-tx)
+
+  (begin-tx "mint2")
+  (use marmalade.ledger)
+(use marmalade.policy-manager)
+  (env-sigs [
+    { 'key: 'bob
+     ,'caps: [(marmalade.ledger.MINT (create-token-id { 'uri: "ipfs://howdydodad", 'precision: 0, 'policies: util.DEFAULT_POLICIES }) "bob" 1.0)
+    ]
+     }])
+     (env-data {
+      "token-id": (create-token-id { 'uri: "ipfs://howdydodad", 'precision: 0, 'policies: util.DEFAULT_POLICIES } )
+     ,"account": "bob"
+     , "policies": util.DEFAULT_POLICIES 
+     ,"nfp-mint-guard": {"keys": ["bob"], "pred": "keys-all"}
+     , "royalty_spec": {
+      "fungible": coin
+     ,"creator": 'bob
+     ,"creator-guard":  {"keys": ["creatorGuard"], "pred": "keys-all"}
+     ,"royalty-rate": 0.05
+    }
+      })
+    
+         (free.kadenai-minter.mint "bob" "ipfs://howdydodad" 0 util.DEFAULT_POLICIES )
+   
+  (commit-tx)
+
+  (begin-tx "mint3")
+  (use marmalade.ledger)
+(use marmalade.policy-manager)
+  (env-sigs [
+    { 'key: 'alice
+     ,'caps: [(marmalade.ledger.MINT (create-token-id { 'uri: "ipfs://howdydodads", 'precision: 0, 'policies: util.DEFAULT_POLICIES }) "alice" 1.0)
+    ]
+     }])
+     (env-data {
+      "token-id": (create-token-id { 'uri: "ipfs://howdydodads", 'precision: 0, 'policies: util.DEFAULT_POLICIES } )
+     ,"account": "alice"
+     , "policies": util.DEFAULT_POLICIES 
+     ,"nfp-mint-guard": {"keys": ["alice"], "pred": "keys-all"}
+      })
+    
+         (free.kadenai-minter.mint "alice" "ipfs://howdydodads" 0 util.DEFAULT_POLICIES )
+   
+  (commit-tx)
+;  (use marmalade.royalty-policy-v1)
+  (begin-tx "mint4 royalties")
+  (use marmalade.ledger)
+(use marmalade.policy-manager)
+  (env-sigs [
+    { 'key: 'bob
+     ,'caps: [(marmalade.ledger.MINT (create-token-id { 'uri: "ipfs://howdydodadsf", 'precision: 0, 'policies: util.ROYALTY_POLICIES }) "bob" 1.0)
+    ]
+     }])
+     (env-data {
+      "token-id": (create-token-id { 'uri: "ipfs://howdydodadsf", 'precision: 0, 'policies: util.ROYALTY_POLICIES } )
+     ,"account": "bob"
+     , "policies": util.ROYALTY_POLICIES 
+     ,"nfp-mint-guard": {"keys": ["bob"], "pred": "keys-all"}
+     ,"royalty_spec": {
+      "fungible": coin
+     ,"creator": 'bob
+     ,"creator-guard":  {"keys": ["bob-key"], "pred": "keys-all"}
+     ,"royalty-rate": 0.05
+    }
+      })
+  
+    (free.kadenai-minter.mint "bob" "ipfs://howdydodadsf" 0 util.ROYALTY_POLICIES )
+    
+    ; Saving these functions if I need to create and mint as a test.
+    ;  (create-token (read-msg 'token-id) 0 "ipfs://howdydodadsf" util.ROYALTY_POLICIES )
+    ;       (marmalade.ledger.mint (read-msg "token-id") "bob" (read-keyset 'nfp-mint-guard) 1.0)
+   
+  (commit-tx)
+
+(begin-tx "Put a token up for sale")
+(env-hash (hash "offer-quote-rando-id-0"))
+(use marmalade.ledger)
+(env-data {
+  "seller-guard": {"keys": ["bob-key"], "pred": "keys-all"}
+})
+(env-data {
+  "token-id": "t:u0txx5qbJKyI-vg_XoOkDFgn7CsbYqyIz5FhjsgbwCg" 
+, "quote": {
+    "fungible": coin
+    ,"price": 2.0
+    ,"amount": 1.0
+    ,"seller-guard": {"keys": ["bob-key"], "pred": "keys-all"}}
+  })
+  (env-chain-data {"block-time": (time "2023-07-20T11:26:35Z")})
+  (env-sigs [
+    { 'key: 'bob-key
+    ,'caps: [
+    (marmalade.ledger.OFFER (read-msg 'token-id ) "bob" 1.0 (time "2023-07-22T11:26:35Z") )]
+    }])
+    ;  (sale (read-msg 'token-id) "bob" 1.0 (time "2023-07-22T11:26:35Z"))
+    (expect "Start offer succeeds"
+    true
+    (sale (read-msg 'token-id) "bob" 1.0 (time "2023-07-22T11:26:35Z")))
+
+
+    (env-data {
+      "token-id": "t:u0txx5qbJKyI-vg_XoOkDFgn7CsbYqyIz5FhjsgbwCg"
+      ,"sale-id": "Sc3lWVtk5QeGRg-qeeYjIALH8U9P0JlFbRxlCWDtQSw"
+      ,"bidder-guard": {"keys": ["alice-key"], "pred": "keys-all"}
+    })
+
+    (env-sigs
+      [{'key:'alice-key
+        ,'caps: [
+           (coin.TRANSFER "alice" "c:ld2-6RPYWaZVfQ48BL6hC66NXmC5cLCHCRiwdvGCYD4" 5.0)
+        ]}])
+    
+      (expect "Place Bid succeeds"
+        true
+        (marmalade.fungible-quote-policy-v1.place-bid (read-msg 'token-id) "alice" (read-keyset 'bidder-guard) 1.0 5.0 (read-msg 'sale-id))
+      )
+
+(commit-tx)
+
+(begin-tx "Accept Bid")
+
+(env-hash (hash "offer-quote-rando-id-0"))
+(use marmalade.fungible-quote-policy-v1)
+
+  (env-sigs [
+    { 'key: 'bob
+    ,'caps: [
+      (SELLER (read-msg 'sale-id))
+    ]
+    }])
+
+    (env-data {
+      "buyer": "alice"
+      ,"buyer-guard": {"keys": ["alice-key"], "pred": "keys-all"}
+      ,"market-guard": {"keys": ["market"], "pred": "keys-all"}
+      ,"marketplace-fee": {
+      "marketplace-account":""
+      ,"mk-fee-percentage": 0.0
+      }
+      ,"bid-id": (get-bid-id "Sc3lWVtk5QeGRg-qeeYjIALH8U9P0JlFbRxlCWDtQSw" "alice")
+      ,"sale-id": "Sc3lWVtk5QeGRg-qeeYjIALH8U9P0JlFbRxlCWDtQSw"
+    })
+
+    ;  (env-sigs [
+    ;    { 'key: 'alice-key
+    ;    ,'caps: [
+    ;      (marmalade.ledger.BUY "t:u0txx5qbJKyI-vg_XoOkDFgn7CsbYqyIz5FhjsgbwCg" "bob" "alice"  1.0 (time  "2023-07-22T11:26:35Z") "Sc3lWVtk5QeGRg-qeeYjIALH8U9P0JlFbRxlCWDtQSw")
+    ;      ]
+    ;    },
+    ;    { 'key: 'bob-key
+    ;    ,'caps: [
+    ;      (SELLER (read-msg 'sale-id))
+    ;    ]
+    ;    }])
+
+    ;    ;  (continue-pact 1 false "Sc3lWVtk5QeGRg-qeeYjIALH8U9P0JlFbRxlCWDtQSw")
+    ;    (expect "Accepting bid & buy succeeds"
+    ;    true
+    ;    (continue-pact 1 false "Sc3lWVtk5QeGRg-qeeYjIALH8U9P0JlFbRxlCWDtQSw"))
+
+
+(commit-tx)
+
+;  "Sc3lWVtk5QeGRg-qeeYjIALH8U9P0JlFbRxlCWDtQSw"
+
+  ;  n_fa5008565e171dca599c6accfd71d6006ddecce0.util-v1
+
+  ;  "token-id": (n_fa5008565e171dca599c6accfd71d6006ddecce0.ledger.create-token-id { 'uri: "ipfs://bafyreibxvp7ii2alete6ek23tgnecw7jd5u6fdfpogqsrcajmszfou37je", 'precision: 0, 'policies: n_fa5008565e171dca599c6accfd71d6006ddecce0.util-v1.DEFAULT }),
+  ;  "account": "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce",
+
+
+  ; To get your escrow account for bids, easy town
+  ; (marmalade.fungible-quote-policy-v1.bid-escrow-account "Sc3lWVtk5QeGRg-qeeYjIALH8U9P0JlFbRxlCWDtQSw-alice")
+  ; "c:ld2-6RPYWaZVfQ48BL6hC66NXmC5cLCHCRiwdvGCYD4"
+  ; "c:MXh5OA419TvCtgC8dwWFDNme-ClXTnSb2YT1xyEKf6M"

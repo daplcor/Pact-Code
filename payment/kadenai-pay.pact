@@ -23,6 +23,15 @@
       )
       @event true
       )
+
+      (defcap DONATION_EVENT
+        (
+          id:string
+          account:string
+          amount:decimal
+        )
+        @event true
+        )
   
     (defschema payment-table
       id:string
@@ -34,6 +43,16 @@
   
     (deftable payments:{payment-table})
   
+    (defschema donate-table
+      id:string
+      account:string
+      amount:decimal
+      fungible:module{fungible-v2}
+    )
+
+    (deftable donate:{donate-table})
+
+
     (defschema collection
       name:string
       description:string
@@ -47,20 +66,17 @@
   
     (deftable collections:{collection})
   
-    (defun getz ()
-    (select payments (constantly true))
-    )
-  
+      
     ;; Functions
  (defun create-collection-with-payment (collectionData:object fungible:module{fungible-v2} account:string )
- (let*
+ (let* 
    (
-    (IMGCOST (get-image-fee))
-     (collectionName (at "name" collectionData))
-     (totalSupply (at "totalSupply" collectionData))
+     (IMGCOST:decimal (get-image-fee))
+     (collectionName:string (at "name" collectionData))
+     (totalSupply:decimal (at "totalSupply" collectionData))
      (collectionCost:decimal (floor (* totalSupply IMGCOST) 2))
      (time (get-time))
-     (id (hash {"name": collectionName, "account": account, "totalSupply": totalSupply, "time": time}))
+     (id:string (hash {"name": collectionName, "account": account, "totalSupply": totalSupply, "time": time}))
    )
 
   (update-payment id account collectionName collectionCost fungible collectionData)
@@ -115,6 +131,10 @@
       (read payments name)
     )
 
+    (defun get-donation (id:string)
+        (read donate id)
+    )
+
 ; Getters for the absolute win!
 
 (defun get-collection-data:object{collection} (collection:string)
@@ -123,10 +143,10 @@
 )
   
 
-  (defun calculate-cost (totalSupply)
+  (defun calculate-cost (totalSupply:decimal)
   @doc "Calculate the cost for images"
   (let (
-    (IMGCOST (get-image-fee)))
+    (IMGCOST:decimal (get-image-fee)))
     (*  totalSupply IMGCOST)
   )
 )
@@ -135,6 +155,38 @@
   (at "block-time" (chain-data)
   ))
 
+
+
+    ;; -------------------------------
+    ;;            Donations
+    ;; -------------------------------
+
+    (defun create-donation (amount:decimal account:string fungible:module{fungible-v2}  )
+    (let*
+      (
+        (time (get-time))
+        (bank (get-bank))
+        (amt:decimal (floor (* amount 1.0) 2))
+        (id (hash {"account": account, "amount": amt, "time": time}))
+      )
+   
+      (if (> amount 0.0)
+      (fungible::transfer account bank amt)
+      []
+  )
+   
+      (insert donate id
+       {
+        "id": id,
+         "account": account,
+         "amount": amt,
+         "fungible": fungible
+       }
+     )
+     (emit-event (DONATION_EVENT id account amt))
+     )
+   )
+   
     ;; -------------------------------
     ;;          String Values
     ;; -------------------------------
@@ -189,16 +241,26 @@
       )
     )
   
-    (defun get-image-cost:string (valId:string)
+    (defun get-image-cost:decimal (valId:string)
       @doc "Gets the cost with the provided id"
   
       (at "value" (read fees valId ["value"]))
     )
   
-    (defconst IMAGE_COST:string "IMAGECOST")
+    (defconst IMAGE_COST "IMAGECOST")
   
-    (defun get-image-fee:string ()
+    (defun get-image-fee()
       (get-image-cost IMAGE_COST)
+    )
+
+    ; Local Calls
+
+    (defun getz ()
+    (select payments (constantly true))
+    )
+
+    (defun get-donate ()
+    (select donate (constantly true))
     )
 
 )
@@ -210,6 +272,7 @@
   (create-table payments)
   (create-table values)
   (create-table fees)
+  (create-table donate)
 ]
 )
   

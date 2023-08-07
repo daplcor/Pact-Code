@@ -2,47 +2,27 @@
 (load "../../policy-manager/policy-manager.repl")
 
 (begin-tx)
-(use kip.token-policy-v2 [token-policies concrete-policy QUOTE_POLICY NON_FUNGIBLE_POLICY ROYALTY_POLICY COLLECTION_POLICY])
-
-(module util GOV
-  (defcap GOV () true)
-
-  (defconst DEFAULT_COLLECTION_WITH_ROYALTY:object{concrete-policy}
-    { 'quote-policy: true
-     ,'non-fungible-policy: true
-     ,'royalty-policy: true
-     ,'collection-policy:true
-    }
-  )
-  (defconst DEFAULT_COLLECTION_POLICIES_WITH_ROYALTY:object{token-policies}
-    { 'concrete-policies:DEFAULT_COLLECTION_WITH_ROYALTY
-     ,'immutable-policies: []
-     ,'adjustable-policies:[]
-    })
-)
+(use marmalade.policy-manager [ NON_FUNGIBLE_POLICY ROYALTY_POLICY COLLECTION_POLICY])
 (commit-tx)
 
 (begin-tx)
-  (use marmalade.ledger)
-  (use marmalade.policy-manager)
-  (test-capability (coin.COINBASE))
   (env-data {
     "creator-guard": {"keys": ["creator"], "pred": "keys-all"}
   })
-  (coin.coinbase "creator-account" (read-keyset 'creator-guard) 2.0)
+  (marmalade.abc.create-account "k:creator" (read-keyset 'creator-guard))
 (commit-tx)
 
 (begin-tx "Creating collection")
   (use marmalade.ledger)
   (use marmalade.policy-manager)
+  (use marmalade.util-v1)
   (env-data {
-    "token-id": (create-token-id { 'uri: "test-collection-royalty-uri", 'precision: 0, 'policies: util.DEFAULT_COLLECTION_POLICIES_WITH_ROYALTY } )
-  ,"account": "account"
-  ,"nfp-mint-guard": {"keys": ["account"], "pred": "keys-all"}
-  ,"cp-mint-guard": {"keys": ["account"], "pred": "keys-all"}
+    "token-id": (create-token-id { 'uri: "test-collection-royalty-uri", 'precision: 0, 'policies: (create-policies DEFAULT_COLLECTION_ROYALTY) } )
+  ,"account": "k:account"
+  ,"account-guard": {"keys": ["account"], "pred": "keys-all"}
   ,"royalty_spec": {
-      "fungible": coin
-    ,"creator": 'creator-account
+      "fungible": marmalade.abc
+    ,"creator": "k:creator"
     ,"creator-guard":  {"keys": ["creator"], "pred": "keys-all"}
     ,"royalty-rate": 0.05
     }
@@ -62,15 +42,17 @@
 (begin-tx "Create token without operator guard fails")
   (use marmalade.ledger)
   (use marmalade.policy-manager)
+  (use marmalade.util-v1)
 
  (expect-failure "create token fails if operator guard isn't present"
    "Keyset failure"
-   (create-token (read-msg 'token-id) 0 "test-collection-royalty-uri" util.DEFAULT_COLLECTION_POLICIES_WITH_ROYALTY ))
+   (create-token (read-msg 'token-id) 0 "test-collection-royalty-uri" (create-policies DEFAULT_COLLECTION_ROYALTY) ))
 (rollback-tx)
 
 (begin-tx "Create token")
   (use marmalade.ledger)
   (use marmalade.policy-manager)
+  (use marmalade.util-v1)
 
   (env-sigs [
     { 'key: 'operator
@@ -79,7 +61,7 @@
 
   (expect "create a default token with collection-policy, quote-policy, non-fungible-policy, royalty-policy"
     true
-    (create-token (read-msg 'token-id) 0 "test-collection-royalty-uri" util.DEFAULT_COLLECTION_POLICIES_WITH_ROYALTY ))
+    (create-token (read-msg 'token-id) 0 "test-collection-royalty-uri" (create-policies DEFAULT_COLLECTION_ROYALTY) ))
 
 (commit-tx)
 
@@ -89,31 +71,12 @@
 
   (env-sigs [
     { 'key: 'account1
-    ,'caps: [(marmalade.ledger.MINT "t:hkBE3LKTdPz7nji4p62vejoW1TT11L7UpdHhpb4VEHE" "account" 1.0)
-      (marmalade.collection-policy-v1.MINT "t:hkBE3LKTdPz7nji4p62vejoW1TT11L7UpdHhpb4VEHE")
-      (marmalade.non-fungible-policy-v1.MINT "t:hkBE3LKTdPz7nji4p62vejoW1TT11L7UpdHhpb4VEHE")]
-    }])
-
-  (expect-failure "mint a default token with collection-policy, quote-policy, non-fungible-policy, royalty-policy"
-    "Keyset failure"
-    (marmalade.ledger.mint (read-msg 'token-id )  (read-msg 'account ) (read-keyset 'cp-mint-guard ) 1.0))
-
-(commit-tx)
-
-(begin-tx "Mint token")
-  (use marmalade.ledger)
-  (use marmalade.policy-manager)
-
-  (env-sigs [
-    { 'key: 'account
-    ,'caps: [(marmalade.ledger.MINT "t:hkBE3LKTdPz7nji4p62vejoW1TT11L7UpdHhpb4VEHE" "account" 1.0)
-      (marmalade.collection-policy-v1.MINT "t:hkBE3LKTdPz7nji4p62vejoW1TT11L7UpdHhpb4VEHE")
-      (marmalade.non-fungible-policy-v1.MINT "t:hkBE3LKTdPz7nji4p62vejoW1TT11L7UpdHhpb4VEHE")]
+    ,'caps: [(marmalade.ledger.MINT (read-msg 'token-id) "k:account" 1.0)]
     }])
 
   (expect "mint a default token with collection-policy, quote-policy, non-fungible-policy, royalty-policy"
     true
-    (marmalade.ledger.mint (read-msg 'token-id )  (read-msg 'account ) (read-keyset 'cp-mint-guard ) 1.0))
+    (marmalade.ledger.mint (read-msg 'token-id )  (read-msg 'account ) (read-keyset 'account-guard ) 1.0))
 
   (expect "collection should be present and size should be updated"
     {
@@ -129,7 +92,6 @@
     {
       "id": (read-msg 'token-id)
       ,"collection-id": "collection:hSQGbcedpUX030HHNizv3KQokGwdGijDoG7ifTvWKe4"
-      ,"mint-guard": (read-keyset 'cp-mint-guard)
     }
     (marmalade.collection-policy-v1.get-token (read-msg 'token-id))
   )
@@ -138,15 +100,16 @@
 (begin-tx "Creating collection and validate size")
   (use marmalade.ledger)
   (use marmalade.policy-manager)
+  (use marmalade.util-v1)
+
   (env-data {
-    "token-id1": (create-token-id { 'uri: "test-collection-size-uri1", 'precision: 0, 'policies: util.DEFAULT_COLLECTION_POLICIES_WITH_ROYALTY } )
-  ,"token-id2": (create-token-id { 'uri: "test-collection-size-uri2", 'precision: 0, 'policies: util.DEFAULT_COLLECTION_POLICIES_WITH_ROYALTY } )
-  ,"account": "account"
-  ,"nfp-mint-guard": {"keys": ["account"], "pred": "keys-all"}
-  ,"cp-mint-guard": {"keys": ["account"], "pred": "keys-all"}
+    "token-id1": (create-token-id { 'uri: "test-collection-size-uri1", 'precision: 0, 'policies: (create-policies DEFAULT_COLLECTION_ROYALTY) } )
+  ,"token-id2": (create-token-id { 'uri: "test-collection-size-uri2", 'precision: 0, 'policies: (create-policies DEFAULT_COLLECTION_ROYALTY) } )
+  ,"account": "k:account"
+  ,"account-guard": {"keys": ["account"], "pred": "keys-all"}
   ,"royalty_spec": {
-      "fungible": coin
-    ,"creator": 'creator-account
+      "fungible": marmalade.abc
+    ,"creator": "k:creator"
     ,"creator-guard":  {"keys": ["creator"], "pred": "keys-all"}
     ,"royalty-rate": 0.05
     }
@@ -165,25 +128,26 @@
 
   (expect "create a default token with collection-policy, quote-policy, non-fungible-policy, royalty-policy"
     true
-    (create-token (read-msg 'token-id1) 0 "test-collection-size-uri1" util.DEFAULT_COLLECTION_POLICIES_WITH_ROYALTY ))
+    (create-token (read-msg 'token-id1) 0 "test-collection-size-uri1" (create-policies DEFAULT_COLLECTION_ROYALTY) ))
 
   (expect-failure "creating another token will exceed collection-size"
     "Exceeds collection size"
-    (create-token (read-msg 'token-id2) 0 "test-collection-size-uri2" util.DEFAULT_COLLECTION_POLICIES_WITH_ROYALTY ))
+    (create-token (read-msg 'token-id2) 0 "test-collection-size-uri2" (create-policies DEFAULT_COLLECTION_ROYALTY) ))
 (rollback-tx)
 
 (begin-tx "Create collection with unlimited size and add two tokens")
   (use marmalade.ledger)
   (use marmalade.policy-manager)
+  (use marmalade.util-v1)
+
   (env-data {
-    "token-id1": (create-token-id { 'uri: "test-collection-size-uri1", 'precision: 0, 'policies: util.DEFAULT_COLLECTION_POLICIES_WITH_ROYALTY } )
-  ,"token-id2": (create-token-id { 'uri: "test-collection-size-uri2", 'precision: 0, 'policies: util.DEFAULT_COLLECTION_POLICIES_WITH_ROYALTY } )
-  ,"account": "account"
-  ,"nfp-mint-guard": {"keys": ["account"], "pred": "keys-all"}
-  ,"cp-mint-guard": {"keys": ["account"], "pred": "keys-all"}
+    "token-id1": (create-token-id { 'uri: "test-collection-size-uri1", 'precision: 0, 'policies: (create-policies DEFAULT_COLLECTION_ROYALTY) } )
+  ,"token-id2": (create-token-id { 'uri: "test-collection-size-uri2", 'precision: 0, 'policies: (create-policies DEFAULT_COLLECTION_ROYALTY) } )
+  ,"account": "k:account"
+  ,"account-guard": {"keys": ["account"], "pred": "keys-all"}
   ,"royalty_spec": {
-      "fungible": coin
-    ,"creator": 'creator-account
+      "fungible": marmalade.abc
+    ,"creator": "k:creator"
     ,"creator-guard":  {"keys": ["creator"], "pred": "keys-all"}
     ,"royalty-rate": 0.05
     }
@@ -202,9 +166,10 @@
 
   (expect "create a default token with collection-policy, quote-policy, non-fungible-policy, royalty-policy"
     true
-    (create-token (read-msg 'token-id1) 0 "test-collection-size-uri1" util.DEFAULT_COLLECTION_POLICIES_WITH_ROYALTY ))
+    (create-token (read-msg 'token-id1) 0 "test-collection-size-uri1" (create-policies DEFAULT_COLLECTION_ROYALTY) ))
 
   (expect "create another token with collection-policy, quote-policy, non-fungible-policy, royalty-policy"
     true
-    (create-token (read-msg 'token-id2) 0 "test-collection-size-uri2" util.DEFAULT_COLLECTION_POLICIES_WITH_ROYALTY ))
+    (create-token (read-msg 'token-id2) 0 "test-collection-size-uri2" (create-policies DEFAULT_COLLECTION_ROYALTY) ))
 (rollback-tx)
+

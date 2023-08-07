@@ -8,11 +8,10 @@
           (> (length account) 2))
     ]
 
-  (use util.fungible-util)
-  (use marmalade.policy-manager)
   (implements kip.poly-fungible-v3)
   (use kip.poly-fungible-v3 [account-details sender-balance-change receiver-balance-change])
-  (use kip.token-policy-v2 [token-policies])
+  (use util.fungible-util)
+  (use marmalade.policy-manager)
 
   ;;
   ;; Tables/Schemas
@@ -25,13 +24,13 @@
     uri:string
     precision:integer
     supply:decimal
-    policies:object{token-policies}
+    policies:[module{kip.token-policy-v2}]
   )
 
   (defschema token-details
     uri:string
     precision:integer
-    policies:object{token-policies}
+    policies:[module{kip.token-policy-v2}]
   )
 
   (deftable tokens:{token-schema})
@@ -86,7 +85,7 @@
     @event true
   )
 
-  (defcap TOKEN:bool (id:string precision:integer supply:decimal policies:object{token-policies} uri:string)
+  (defcap TOKEN:bool (id:string precision:integer supply:decimal policies:[module{kip.token-policy-v2}] uri:string)
     @event
     true
   )
@@ -110,39 +109,9 @@
     true
   )
 
-
-  ;; dependent on marmalade
-  (defcap ADJUST_POLICY (token-id:string account:string)
-    @event
-    (enforce (= (get-balance token-id account) (total-supply token-id)) "Account doesn't own token")
-    (enforce-guard (account-guard token-id account)))
-
-  (defun adjust-policy
-    ( token-id:string
-      account:string
-      adjustable-policies:[module{kip.token-policy-v2}] )
-    (with-capability (ADJUST_POLICY token-id account) ;; needs sigs from token owner
-      (with-read tokens token-id {
-        "policies":= old-policies
-        }
-        (let* ((new-policies:object{token-policies} (+
-                  {'adjustable-policies: adjustable-policies}
-                  old-policies
-              )))
-        (update tokens token-id {
-          "policies": new-policies
-        })
-    ))
-  ))
-
   ;;
   ;; Implementation caps
   ;;
-
-  (defcap ROTATE (id:string account:string)
-    @doc "Autonomously managed capability for guard rotation"
-    @managed
-    true)
 
   (defcap DEBIT (id:string sender:string)
     (enforce-guard (account-guard id sender))
@@ -184,7 +153,7 @@
   ;  Transform token-schema object to token-info object
   (defun get-token-info:object{kip.token-policy-v2.token-info} (id:string)
     (with-read tokens id
-     { 'policies := policies:object{token-policies}
+     { 'policies := policies:[module{kip.token-policy-v2}]
      , 'supply := supply
      , 'precision := precision
      , 'uri := uri
@@ -203,7 +172,6 @@
       account:string
       guard:guard
     )
-    (enforce-valid-account account)
     (enforce-reserved account guard)
     (insert ledger (key id account)
       { "balance" : 0.0
@@ -223,23 +191,19 @@
 
   (defun create-token-id:string (token-details:object{token-details})
     (format "t:{}"
-      [(hash (+  {'policies:
-                    (+
-                      {'adjustable-policies: []}
-                      (at 'policies token-details))
-                }
-                token-details ))
-      ])
+      [(hash [token-details (at 'chain-id (chain-data))])])
   )
 
   (defun create-token:bool
     ( id:string
       precision:integer
       uri:string
-      policies:object{token-policies}
+      policies:[module{kip.token-policy-v2}]
     )
     (with-capability (LEDGER)
-      (let ((token-details { 'uri: uri, 'precision: precision, 'policies: policies }))
+      ;; enforces token and uri protocols
+      (enforce-uri-reserved uri)
+      (let ((token-details { 'uri: uri, 'precision: precision, 'policies: (sort policies) }))
        (enforce-token-reserved id token-details)
       )
       ;; maps policy list and calls policy::enforce-init
@@ -256,17 +220,31 @@
       (emit-event (TOKEN id precision 0.0 policies uri)))
   )
 
+  (defun check-reserved:string (token-id:string)
+    " Checks token-id for reserved name and returns type if \
+    \ found or empty string. Reserved names start with a \
+    \ single char and colon, e.g. 't:foo', which would return 't' as type."
+    (let ((pfx (take 2 token-id)))
+      (if (= ":" (take -1 pfx)) (take 1 pfx) "")))
+
   (defun enforce-token-reserved:bool (token-id:string token-details:object{token-details})
     @doc "Enforce reserved token-id name protocols."
     (let ((r (check-reserved token-id)))
-      (if (= "" r) true
-        (if (= "t" r)
-          (enforce
-            (= token-id
-               (create-token-id token-details))
-            "Token protocol violation")
-          (enforce false
-            (format "Unrecognized reserved protocol: {}" [r]) )))))
+      (if (= "t" r)
+        (enforce
+          (= token-id
+             (create-token-id token-details))
+          "Token protocol violation")
+        (enforce false
+          (format "Unrecognized reserved protocol: {}" [r]) ))))
+
+  (defun enforce-uri-reserved:bool (uri:string)
+    " Enforce reserved uri name protocols "
+    (if (= "marmalade" (take 9 uri))
+        (enforce false "Reserved protocol: marmalade")
+        true
+    )
+  )
 
   (defun truncate:decimal (id:string amount:decimal)
     (floor amount (precision id))
@@ -280,17 +258,6 @@
     ( id:string account:string )
     (read ledger (key id account))
   )
-
-  (defun rotate:bool (id:string account:string new-guard:guard)
-    (with-capability (ROTATE id account)
-      (enforce-transfer-policy id account account 0.0)
-      (with-read ledger (key id account)
-        { "guard" := old-guard }
-
-        (enforce-guard old-guard)
-        (update ledger (key id account)
-          { "guard" : new-guard })
-        (emit-event (ACCOUNT_GUARD id account new-guard)))))
 
   (defun transfer:bool
     ( id:string
@@ -337,7 +304,6 @@
       (enforce (!= sender receiver)
         "sender cannot be the receiver of a transfer")
       (enforce-valid-transfer sender receiver (precision id) amount)
-
       (with-capability (TRANSFER id sender receiver amount)
         (enforce-transfer-policy id sender receiver amount)
         (let
@@ -424,34 +390,35 @@
     @model [ (property (> amount 0.0))
              (property (valid-account account))
            ]
-    (enforce-valid-account account)
+    (enforce-reserved account guard)
     (enforce-unit id amount)
 
     (require-capability (CREDIT id account))
 
     (with-default-read ledger (key id account)
-      { "balance" : -1.0, "guard" : guard }
-      { "balance" := old-bal, "guard" := retg }
-      (enforce (= retg guard)
-        "account guards do not match")
+      { "balance" : -1.0 }
+      { "balance" := old-bal }
 
-      (let* ((is-new
-               (if (= old-bal -1.0)
-                   (enforce-reserved account guard)
-                 false))
-              (new-bal (if is-new amount (+ old-bal amount)))
-            )
-
-      (write ledger (key id account)
-        { "balance" : new-bal
-        , "guard"   : retg
-        , "id"   : id
-        , "account" : account
-        })
-        (if is-new (emit-event (ACCOUNT_GUARD id account retg)) true)
-        {'account: account, 'previous: (if is-new 0.0 old-bal), 'current: new-bal}
+      (let* ((is-new:bool
+               (= old-bal -1.0))
+             (old-bal:decimal (if is-new 0.0 old-bal))
+             (new-bal:decimal  (+ old-bal amount)))
+      (if is-new
+        [ (insert ledger (key id account)
+            { "balance" : new-bal
+            , "guard"   : guard
+            , "id" : id
+            , "account" : account
+            })
+          (emit-event (ACCOUNT_GUARD id account guard))
+        ]
+        (update ledger (key id account)
+          { "balance" : new-bal
+          }))
+      {'account: account, 'previous: old-bal, 'current: new-bal}
       ))
-  )
+    )
+
 
   (defun credit-account:object{receiver-balance-change}
     ( id:string
@@ -569,6 +536,9 @@
         (with-capability (BUY id seller buyer amount timeout (pact-id))
           (buy id seller buyer buyer-guard amount (pact-id))))))
 
+          (defun tk () (select tokens (constantly true)))
+
+          (defun ld () (select ledger (constantly true)))
 
   (defun offer:bool
     ( id:string
@@ -626,6 +596,7 @@
       )
       (emit-event (TRANSFER id (sale-account) buyer amount))
       (emit-event (RECONCILE id amount sender receiver)))
+      true
   )
 
   (defun sale-active:bool (timeout:time)

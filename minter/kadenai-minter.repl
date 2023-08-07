@@ -157,9 +157,55 @@
      (env-data {
       "token-id": (create-token-id { 'uri: "ipfs://howdydoda", 'precision: 0, 'policies: util.DEFAULT_POLICIES } )
      ,"account": "bob"
+     , "policies": util.DEFAULT_POLICIES 
      ,"nfp-mint-guard": {"keys": ["bob"], "pred": "keys-all"}
       })
     
          (free.kadenai-minter.mint "bob" "ipfs://howdydoda" 0 util.DEFAULT_POLICIES )
    
   (commit-tx)
+
+  (begin-tx "mint2")
+  (use marmalade.ledger)
+(use marmalade.policy-manager)
+  (env-sigs [
+    { 'key: 'bob
+     ,'caps: [(marmalade.ledger.MINT (create-token-id { 'uri: "ipfs://howdydodad", 'precision: 0, 'policies: util.DEFAULT_POLICIES }) "bob" 1.0),
+     (marmalade.non-fungible-policy-v1.MINT (create-token-id { 'uri: "ipfs://howdydodad", 'precision: 0, 'policies: util.DEFAULT_POLICIES }) )
+    ]
+     }])
+     (env-data {
+      "token-id": (create-token-id { 'uri: "ipfs://howdydodad", 'precision: 0, 'policies: util.DEFAULT_POLICIES } )
+     ,"account": "bob"
+     , "policies": util.DEFAULT_POLICIES 
+     ,"nfp-mint-guard": {"keys": ["bob"], "pred": "keys-all"}
+      })
+    
+         (free.kadenai-minter.mint "bob" "ipfs://howdydodad" 0 util.DEFAULT_POLICIES )
+   
+  (commit-tx)
+
+  (begin-tx "mint3")
+  (use marmalade.ledger)
+(use marmalade.policy-manager)
+  (env-sigs [
+    { 'key: 'alice
+     ,'caps: [(marmalade.ledger.MINT (create-token-id { 'uri: "ipfs://howdydodads", 'precision: 0, 'policies: util.DEFAULT_POLICIES }) "alice" 1.0),
+     (marmalade.non-fungible-policy-v1.MINT (create-token-id { 'uri: "ipfs://howdydodads", 'precision: 0, 'policies: util.DEFAULT_POLICIES }) )
+    ]
+     }])
+     (env-data {
+      "token-id": (create-token-id { 'uri: "ipfs://howdydodads", 'precision: 0, 'policies: util.DEFAULT_POLICIES } )
+     ,"account": "alice"
+     , "policies": util.DEFAULT_POLICIES 
+     ,"nfp-mint-guard": {"keys": ["alice"], "pred": "keys-all"}
+      })
+    
+         (free.kadenai-minter.mint "alice" "ipfs://howdydodads" 0 util.DEFAULT_POLICIES )
+   
+  (commit-tx)
+
+  ;  n_fa5008565e171dca599c6accfd71d6006ddecce0.util-v1
+
+  ;  "token-id": (n_fa5008565e171dca599c6accfd71d6006ddecce0.ledger.create-token-id { 'uri: "ipfs://bafyreibxvp7ii2alete6ek23tgnecw7jd5u6fdfpogqsrcajmszfou37je", 'precision: 0, 'policies: n_fa5008565e171dca599c6accfd71d6006ddecce0.util-v1.DEFAULT }),
+  ;  "account": "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce",

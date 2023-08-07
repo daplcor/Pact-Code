@@ -17,154 +17,117 @@
       true
     )
 
-    (use free.util-random)
+(implements marmalade.ledger)
+(use marmalade.ledger)
 
     ; #####################################################
 
-      (defschema auction
-      ;item:object{poly-fungible-v2}
-      item:string
-      amount:decimal
-      fungible:module{fungible-v2}
-      minPrice:decimal
-      startTime:time
-      endTime:time
-      owner:string
-      highestBid:decimal
-      highestBidder:string
-      escrowId:string
+    (defschema auction-schema
+      token-id:string
+      seller:string
+      start-time:time
+      end-time:time
+      current-bid:decimal
+      current-bidder:string
+      reserve-price:decimal
+      status:integer
     )
-  
-    (deftable auctions:{auction})
-  
-    (defun list-item
-      ( 
-        listData:object
-        amount:decimal
-        minPrice:decimal
-        fungible:module{fungible-v2}
-       )
-      @doc
-        "Transfer the amount of items into an escrow account and store the start and end times of the auction along with the min amount and the fungible that is required for the purchase."
-      (let* ( (escrowId (gen-uuid-rfc-4122-v4)) 
-              (escrow-account (format "escrow-{}" (get-ESCROW-account)))
-              (escrow-guard (get-ESCROW-guard))
-              (item (at "item" listData))
-              (owner (at "owner" listData))
-              (startTime (at "startTime" listData))
-              (endTime (at "endTime" listData))  
-            )
-        (fungible::create-account item escrow-account escrow-guard)
-        (fungible::transfer item owner escrow-account amount)
-        (insert auctions (at "item" listData)
-            { 
-                "item": item,
-                "amount": amount,
-                "fungible": fungible,
-                "minPrice": minPrice,
-                "startTime": startTime,
-                "endTime": endTime,
-                "highestBid": 0.0,
-                "highestBidder": "",
-                "escrowId": escrowId           
-            }
-                listData
-            )
-    )))
-  
-    (defun place-bid
-      ( escrowId:string
-        bidder:string
-        bidAmount:decimal
+    
+    (defconst AUCTION-STATUS-OPEN 0)
+    (defconst AUCTION-STATUS-CLOSED 1)
+    (defconst AUCTION-STATUS-CANCELLED 2)
+    
+    (deftable auctions:{auction-schema})
+    
+    (defun start-auction:bool 
+      ( token-id:string
+        seller:string
+        start-time:time
+        end-time:time
+        reserve-price:decimal )
+      (with-capability (SALE token-id seller reserve-price end-time (pact-id))
+        (insert auctions (pact-id) { 
+          "token-id": token-id,
+          "seller": seller,
+          "start-time": start-time,
+          "end-time": end-time,
+          "current-bid": reserve-price,
+          "current-bidder": "",
+          "reserve-price": reserve-price,
+          "status": AUCTION-STATUS-OPEN
+        })
       )
-      @doc
-        "Place a bid on an auction only if the current time is between the start/end times and the current bid is less than the bidAmount. Transfer the bidAmount of fungible-v2 into the escrow and transfer the current bid's fungible back to the owner."
-      (let* ( (auction (require (read auctions escrowId) "Auction not found"))
-              (current-time (now))
-            )
-        (enforce (and (>= current-time (at "startTime" auction))
-                      (<= current-time (at "endTime" auction)))
-                 "Auction is not active")
-        (enforce (< (highestBid auction) bidAmount)
-                 "Bid amount is not greater than the current highest bid")
-        (fungible::transfer
-          (fungible.id auction.purchase-fungible)
-          bidder
-          (format "escrow-{}" [escrowId])
-          bidAmount)
-        (when (not (empty? (highestBidder auction)))
-          (fungible::transfer
-            (purchase-fungible.id auction.purchase-fungible)
-            (format "escrow-{}" [escrowId])
-            (highestBidder auction)
-            (highestBidder auction)))
-        (update auctions escrowId { "highestBid": bidAmount, "highestBidder": bidder })
-    ))
-  
-    (defun complete-auction
-      ( escrowId:string
+    )
+    
+    (defun place-bid:bool 
+      ( auction-id:string
+        buyer:string
+        bid:decimal )
+      (with-read auctions auction-id {
+        'token-id:= token-id,
+        'seller:= seller,
+        'end-time:= end-time,
+        'current-bid:= current-bid,
+        'status:= status
+      }
+        (enforce (and (sale-active end-time) (= status AUCTION-STATUS-OPEN)) "Auction is not open")
+        (enforce (> bid current-bid) "Bid is lower than current bid")
+        (place-bid token-id buyer buyer (bid-guard) bid (get-bid-id auction-id buyer))
+        (update auctions auction-id { 
+          "current-bid": bid,
+          "current-bidder": buyer
+        })
       )
-      @doc
-        "Complete the auction if the current time is after the endTime. Transfer the NFT to the highest bidder and the funds to the seller."
-      (let* ( (auction (require (read auctions escrowId) "Auction not found"))
-              (current-time (now))
-            )
-        (enforce (> current-time (at "endTime" auction))
-                 "Auction is still active")
+    )
+    
+    (defun close-auction:bool 
+      ( auction-id:string )
+      (with-read auctions auction-id {
+        'token-id:= token-id,
+        'seller:= seller,
+        'end-time:= end-time,
+        'current-bid:= current-bid,
+        'current-bidder:= current-bidder,
+        'status:= status
+      }
+        (enforce (not (sale-active end-time)) "Auction is still active")
+        (enforce (= status AUCTION-STATUS-OPEN) "Auction is not open")
+        (if (= current-bidder "")
+          (withdraw token-id seller current-bid)
+          (accept-bid (get-bid-id auction-id current-bidder) current-bidder auction-id (sale-account) (create-capability-guard (SALE_PRIVATE auction-id)))
+        )
+        (update auctions auction-id { 
+          "status": AUCTION-STATUS-CLOSED
+        })
+      )
+    )
+    
+    (defun cancel-auction:bool 
+      ( auction-id:string )
+      (with-read auctions auction-id {
+        'token-id:= token-id,
+        'seller:= seller,
+        'current-bid:= current-bid,
+        'current-bidder:= current-bidder,
+        'status:= status
+      }
+        (enforce (= status AUCTION-STATUS-OPEN) "Auction is not open")
+        (if (not (= current-bidder ""))
+          (withdraw-bid (get-bid-id auction-id current-bidder) auction-id)
+        )
+        (withdraw token-id seller current-bid)
+        (update auctions auction-id { 
+          "status": AUCTION-STATUS-CANCELLED
+        })
+      )
+    )
+    
+)
   
-        (fungible::transfer
-          (auction.item.id auction.item)
-          (format "escrow-{}" [escrowId])
-          (auction.highestBidder auction)
-          (auction.amount auction))
-  
-        (fungible::transfer
-          (purchase-fungible.id auction.purchase-fungible)
-          (format "escrow-{}" [escrowId])
-          (auction.item.owner auction.item)
-          (highestBid auction))
-  
-        (delete auctions escrowId)
-    ))
-  
-; #############################################
-;                 ESCROW Account
-; #############################################
-
-
-(defcap ESCROW ()
-@doc "Checks to make sure the guard for the given account name is satisfied"
-true
-)
-
-(defun require-ESCROW ()
-@doc "The function used when building the user guard for managed accounts"
-(require-capability (ESCROW))
-)
-
-(defun create-ESCROW-guard ()
-@doc "Creates the user guard"
-(create-user-guard (require-ESCROW))
-)
-
-(defun get-ESCROW-account ()
-(create-principal (create-ESCROW-guard))
-)
-
-
-(defun init ()
-(with-capability (GOVERNANCE)
-  ;  (coin.create-account KDA_BANK_ACCOUNT (kda-bank-guard))
-  (coin.create-account (get-ESCROW-account) (create-ESCROW-guard))
-)
-)
-
-  )
 
   (if (read-msg "upgrade")
   "Upgrade Complete"
   [
   (create-table auctions)
-  (init)
   ]
   )

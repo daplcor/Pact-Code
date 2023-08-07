@@ -131,6 +131,12 @@
         limit:decimal
       )
 
+      (defschema fungible-account
+        @doc "account and guard information of a fungible"
+        account:string
+        guard:guard
+      )
+
   (defschema tier-whitelist-data
   @doc "A data structure for the whitelist data for a tier"
   tierId:string
@@ -182,13 +188,13 @@
   
       (let*
         (
-          (collection-name (at "name" collection-data))
-          (collection-size (floor (at "totalSupply" collection-data)))
-          (operator-guard (at "creatorGuard" collection-data))
-          (provenance (at "provenance" collection-data))
-          (category (at "category" collection-data))
-          (creator (at "creator" collection-data))
-          (creatorGuard (at "creatorGuard" collection-data))
+          (collection-name:string (at "name" collection-data))
+          (collection-size:integer (floor (at "totalSupply" collection-data)))
+          (operator-guard:guard (at "creatorGuard" collection-data))
+          (provenance:string (at "provenance" collection-data))
+          (category:string (at "category" collection-data))
+          (creator:string (at "creator" collection-data))
+          (creatorGuard:guard (at "creatorGuard" collection-data))
         )
         (insert collections (at "name" collection-data)
         (+
@@ -205,11 +211,13 @@
         )
   
         ; Call init-collection in the collection-policy-v1 contract with the required fields
-        (marmalade.collection-policy-v1.create-collection
+        (n_42174c7f0ec646f47ba227ffeb24714da378f4d1.collection-policy-v1.create-collection
           collection-name
           collection-size
           operator-guard
         )
+        "Collection successfully created" 
+
       )
     )
   )
@@ -228,6 +236,7 @@
         { "tiers": tiers }
       )
     )
+    true
   )
 
 
@@ -282,11 +291,13 @@
           )
           ;; Loop through all the tiers and ensure they don't overlap
           (map (no-overlap tier) tiers)
+
         )
       )
     )
-    (map (validate-tier) tiers)
+    (map (validate-tier) tiers) 
   )
+  true
 )
 
 ;  (defun update-collection-uri
@@ -568,13 +579,13 @@
   policy:module{kip.token-policy-v2}
 )
 
-(defun create-marmalade-token:string
+(defun create-marmalade-token:bool
   (
     account:string
     uri:string
     precision:integer
     mint-token-id:string
-    policies:object{kip.token-policy-v2.token-policies}
+    policies:[module{kip.token-policy-v2}]
   )
   @doc "Requires Private OPS. Creates the token on marmalade using the supplied data"
   ;  (with-capability (OPS_INTERNAL))
@@ -587,11 +598,11 @@
         (token-id (concat ["t:" hash-id]))
         (guard (at "guard"(coin.details account)))
       )
-      (update minted-tokens mint-token-id
-        { "revealed": true
-        , "marmToken": token-id
-        }
-      )
+      ;  (update minted-tokens mint-token-id
+      ;    { "revealed": true
+      ;    , "marmToken": token-id
+      ;    }
+      ;  )
 
       (marmalade.ledger.create-token
         token-id
@@ -599,6 +610,7 @@
         uri
         policies
       )
+      
       ;  (install-capability (marmalade.ledger.MINT token-id account 1.0))
       (marmalade.ledger.mint
         token-id
@@ -606,7 +618,7 @@
         guard
         1.0
       )
-      ; Add NFT to the NFT table
+      ; Add NFT to the NFT table 
       (insert nft-table token-id
         {
           "id": token-id,
@@ -819,6 +831,222 @@
 )
 )
 
+
+; Auctions
+
+;  (deftable auctions:{auction-schema})
+;  (deftable auction-bids:{auction-bid-schema})
+
+;  (defschema auction-schema
+;    token-id:string
+;    start-time:time
+;    end-time:time
+;    seller:string
+;    high-bid:decimal
+;    high-bidder:string
+;    status:string
+;  )
+
+;  (defschema auction-bid-schema
+;    auction-id:string
+;    bidder:string
+;    bid:decimal
+;    timestamp:time
+;  )
+
+;  (defun start-auction:bool
+;    ( token-id:string
+;      start-time:time
+;      end-time:time
+;      seller:string
+;      amount:decimal
+;    )
+;    (insert auctions token-id { "token-id": token-id, "start-time": start-time, "end-time": end-time, "seller": seller, "high-bid": 0.0, "high-bidder": "", "status": "open"  })
+;      ;  (marmalade.ledger.sale 
+;      ;    token-id 
+;      ;    seller 
+;      ;    amount 
+;      ;    end-time
+;      ;    )
+;    )
+
+
+
+;  (defun place-bid:bool
+;    ( tokenId:string
+;      auction-id:string
+;      bidder:string
+;      bid:decimal
+;    )
+;    (let* (
+;      (auction:object{auction-schema} (read auctions auction-id))
+;      (high-bid:decimal (at 'high-bid auction))
+;      (start-time:time (at 'start-time auction))
+;      (end-time:time (at 'end-time auction))
+;      (current-time:time (curr-time))
+;      (status:string (at 'status auction))
+;      (buyerGuard (at "guard"(coin.details bidder)))
+;    )
+;      (enforce (> bid high-bid) "Bid must be higher than current bid")
+;      (enforce (and (>= current-time start-time) (<= current-time end-time)) "Bid can only be placed during the auction period")
+;      (enforce (= status "open") "Auction is not open")
+;      (update auctions auction-id { "high-bid": bid, "high-bidder": bidder })
+;      ;; Transfer NFT from bidder to escrow account
+;      ;; Call a function like `transfer-to-escrow` here
+;      (insert auction-bids bidder { "auction-id": auction-id, "bidder": bidder, "bid": bid, "timestamp": current-time })
+;    (marmalade.fungible-quote-policy-v1.place-bid
+;      tokenId
+;      bidder
+;      buyerGuard
+;      1.0
+;      bid
+;      auction-id
+;      )
+;      )
+;  )
+
+;  (defun end-auction:bool
+;    (auction-id:string)
+;    (let* (
+;      (auction:object{auction-schema} (read auctions auction-id))
+;      (end-time:time (at 'end-time auction))
+;      (high-bidder:string (at 'high-bidder auction))
+;      (seller:string (at 'seller auction))
+;      (high-bid:decimal (at 'high-bid auction))
+;      (status:string (at 'status auction))
+;    )
+;      (enforce (>= (curr-time) end-time) "Auction is not yet over")
+;      (enforce (= status "open") "Auction is not open")
+;      ;; Transfer ownership of NFT to high bidder
+;      ;; Call a function like `transfer-from-escrow` here
+;      ;; Transfer high bid to seller here
+;      ;; Call a function like `transfer-funds` here
+;      (update auctions auction-id { "status": "completed" })
+;    )
+;  )
+
+;  (use fungible-quote-policy-v1)
+(use marmalade.ledger)
+
+(defschema auction
+  id:string ; Primary key "sale-id"
+  token-id:string  
+  seller:string
+  start-time:time 
+  end-time:time
+  reserve-price:decimal
+  highest-bid:decimal
+  highest-bidder:string 
+  completed:bool ; True when auction closed
+)
+
+(deftable auctions:{auction} @doc "Auction data")
+
+(defun create-auction:bool 
+  (token-id:string
+   seller:string
+   end-time:time
+   reserve-price:decimal
+   )
+   (let
+  ((id:string (hash-sale token-id seller end-time)))
+  (insert auctions id
+    {
+      "id": id,  
+      "token-id": token-id,
+      "seller": seller,
+      "start-time": (at 'block-time (chain-data)),  
+      "end-time": end-time,
+      "reserve-price": reserve-price,
+      "highest-bid": 0.0,
+      "highest-bidder": "",
+      "completed": false  
+    }
+  )
+   )
+  (marmalade.ledger.sale 
+    token-id
+    seller
+    1.0
+    end-time
+    )
+)
+
+(defun bid:bool 
+  (id:string
+  bidder:string
+  bid-amount:decimal)
+
+  (with-read auctions id {
+    "highest-bid":= current-high-bid,
+    "reserve-price":= reserve,
+    "token-id":= token-id 
+  }
+    
+  (enforce (> bid-amount current-high-bid) "Bid too low")
+  (enforce (>= bid-amount reserve) "Bid lower than reserve")
+  ;  (marmalade.fungible-quote-policy-v1.place-bid 
+  ;    token-id
+  ;    bidder 
+  ;    (at "guard" (coin.details bidder))
+  ;    1.0
+  ;    bid-amount
+  ;    id
+  ;  )
+  
+  (let* (
+    (escrow-account:object{fungible-account} (marmalade.policy-manager.get-escrow-account id))
+    )
+  ;  (coin.TRANSFER bidder escrow bid-amount)
+
+  (coin.transfer bidder (at 'account escrow-account) bid-amount)
+  
+; if auction time > end-time & highest-bid > reserve-price then close-auction
+; else update-auction and get dat nft money.
+
+  (update auctions id {
+    "highest-bid": bid-amount,
+    "highest-bidder": bidder
+  })
+  )
+)
+)
+
+(defun close-auction:bool (auction-id:string)
+
+  (with-read auctions auction-id {
+    "id":= id,
+    "token-id":= token-id,  
+    "seller":= seller,
+    "highest-bidder":= winner, 
+    "highest-bid":= winning-bid
+  }
+  ;  (let* (
+  ;    (bid-id:string (marmalade.fungible-quote-policy-v1.get-bid-id id winner))
+  ;    (escrow:string (marmalade.fungible-quote-policy-v1.bid-escrow-account id))
+  ;    (escrow-guard:guard (create-capability-guard (marmalade.fungible-quote-policy-v1.BID_PRIVATE id)))
+  ;    )
+  ;  ;  (if (> winning-bid 0.0)
+
+  ;  (marmalade.fungible-quote-policy-v1.accept-bid
+  ;   bid-id
+  ;   winner
+  ;   id
+  ;   escrow
+  ;   escrow-guard
+  ;  )
+  ;  ;  )
+  ;    (marmalade.ledger.transfer token-id seller winner 1)
+
+    (update auctions auction-id {"completed": true})
+  ;  )
+)
+)
+
+  (defun auc 
+    ()(select auctions (constantly true)))
+
+
   ; ============================================
   ; ==         Get Detail Functions           ==
   ; ============================================
@@ -831,6 +1059,10 @@
       (get-current-tier tiers)
     )
   )
+  (defun curr-time:time ()
+  @doc "Returns current chain's block-time"
+  (at 'block-time (chain-data))
+)
 
   (defun get-current-tier:object{tier} (tiers:[object:{tier}])
     @doc "Gets the current tier from the list based on block time"
@@ -1001,11 +1233,20 @@
 (defun hash-contents:string
   ( uri:string
     precision:integer
-    policies:object{kip.token-policy-v2.token-policies}
+    policies:[module{kip.token-policy-v2}]
   )
   (hash {'uri: uri, 'precision:precision, 'policies:policies})
 )
 
+(defun hash-sale:string 
+  (token-id:string
+    seller:string
+    end-time:time
+    )
+    (let ((ct:time (curr-time)))
+    (hash {'token-id: token-id, 'seller:seller, 'policies:end-time, 'current-time:ct})
+    )
+    )
 
   (defun init ()
     (with-capability (GOVERNANCE)
@@ -1028,6 +1269,8 @@
   (create-table tdata)
   (create-table tier-data)
   (create-table nft-table)
+  (create-table auctions)
+  ;  (create-table auction-bids)
   ;  (create-table managed-accounts)
   (init)
 ]

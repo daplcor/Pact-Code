@@ -1,137 +1,195 @@
-
 (namespace (read-msg 'ns))
 
 (module policy-manager GOVERNANCE
+
   (defcap GOVERNANCE ()
     (enforce-guard 'marmalade-admin ))
 
-  (implements kip.token-policy-v2)
-  (use kip.token-policy-v2 [token-policies token-info concrete-policy NON_FUNGIBLE_POLICY QUOTE_POLICY ROYALTY_POLICY COLLECTION_POLICY])
+  (use kip.token-policy-v2 [token-info])
+  (use marmalade.quote-manager)
+  (use marmalade.quote-manager [quote-spec quote-msg fungible-account])
 
-  (defschema concrete-policy-list
-    policy-field:string
+  (defconst QUOTE-MSG-KEY "quote"
+    @doc "Payload field for quote spec")
+
+  (defconst UPDATE-QUOTE-PRICE-MSG-KEY "update_quote_price"
+    @doc "Payload field for quote spec")
+
+  (defconst BUYER-FUNGIBLE-ACCOUNT-MSG-KEY "buyer_fungible_account"
+    @doc "Payload field for buyer's fungible account")
+
+  (defcap POLICY_MANAGER:bool ()
+    @doc "Ledger module guard for policies to be able to validate access to policy operations."
+    true
+  )
+
+  (defcap ESCROW (sale-id:string)
+    @doc "Capability to be used as escrow's capability guard"
+    true
+  )
+
+  (defun get-escrow-account:object{fungible-account} (sale-id:string)
+    { 'account: (create-principal (create-capability-guard (ESCROW sale-id)))
+    , 'guard: (create-capability-guard (ESCROW sale-id))
+    })
+
+  (defun policy-manager-guard:guard ()
+    (create-capability-guard (POLICY_MANAGER))
+  )
+
+  ;; Saves ledger guard information
+  (defschema ledger
+    ledger-guard:guard
+  )
+
+  (deftable ledgers:{ledger}
+    @doc "Designed to save one ledger in a single row")
+
+  (defun enforce-ledger:bool ()
+    @doc "Enforces that function is called from the saved ledger"
+    (with-read ledgers "" {
+      "ledger-guard":= ledger-guard
+      }
+      (enforce-guard ledger-guard)
+    )
+  )
+
+  (defun init:bool(ledger-guard:guard)
+    @doc "Must be initiated with ledger information"
+    (with-capability (GOVERNANCE)
+      (insert ledgers "" {
+        "ledger-guard": ledger-guard
+      })
+    )
+    true
+  )
+
+  ;; Saves Concrete policy information
+  (defschema concrete-policy
     policy:module{kip.token-policy-v2}
   )
 
-  (deftable concrete-policy-table:{concrete-policy-list})
-
-  (defconst CONCRETE_POLICY_V1_LIST
-    [NON_FUNGIBLE_POLICY QUOTE_POLICY ROYALTY_POLICY COLLECTION_POLICY] )
-
-  ;; schema to save policy list in table
-  (defschema policies-list
-    concrete-policies:[module{kip.token-policy-v2}]
-    immutable-policies:[module{kip.token-policy-v2}]
-    adjustable-policies:[module{kip.token-policy-v2}]
-  )
-
-  (defschema ledger-guard-schema
-    guard:guard
-  )
-  (deftable ledger-guard-table:{ledger-guard-schema})
-
-  (defun enforce-ledger:bool ()
-    (enforce-guard (at "guard" (read ledger-guard-table "")))
-  )
-
-  (defcap CONCRETE_POLICY_ADMIN (policy-field:string)
-    ;;add admin check
-    (enforce-guard 'marmalade-admin)
-  )
-
-  (defcap QUOTE_ESCROW (sale-id:string)
+  (defcap CONCRETE_POLICY:bool (policy-field:string policy:module{kip.token-policy-v2})
+    @doc "Event emission purpose"
+    @event
     true
   )
 
-  (defun init(marmalade-ledger-guard:guard)
-    ;;TODO adds 4 concrete policies to concrete-policy table
-    (insert ledger-guard-table "" {
-      "guard": marmalade-ledger-guard
-    })
-    true
-  )
+  (deftable concrete-policies:{concrete-policy})
 
-  (defun add-concrete-policy (policy-field:string policy:module{kip.token-policy-v2} )
-    (enforce (contains policy-field CONCRETE_POLICY_V1_LIST) "Not a concrete policy")
-    (with-capability (CONCRETE_POLICY_ADMIN policy-field)
-      (insert concrete-policy-table policy-field {
-        'policy-field: policy-field
-       ,'policy: policy
-      })
-    )
+  (defconst NON_FUNGIBLE_POLICY:string 'non-fungible-policy )
+  (defconst ROYALTY_POLICY:string 'royalty-policy )
+  (defconst COLLECTION_POLICY:string 'collection-policy )
+  (defconst GUARD_POLICY:string 'guard-policy )
+  (defconst CONCRETE_POLICY_LIST:[string]
+    [NON_FUNGIBLE_POLICY ROYALTY_POLICY COLLECTION_POLICY GUARD_POLICY] )
+
+  (defun write-concrete-policy:bool (policy-field:string policy:module{kip.token-policy-v2})
+    (contains policy-field CONCRETE_POLICY_LIST)
+    (with-capability (GOVERNANCE)
+      (write concrete-policies policy-field {
+        "policy": policy
+        }
+      )
+      (emit-event (CONCRETE_POLICY policy-field policy))
+    true)
   )
 
   (defun get-concrete-policy:module{kip.token-policy-v2} (policy-field:string)
-    (with-read concrete-policy-table policy-field
-      {"policy":=policy }
-      policy
+    (with-read concrete-policies policy-field {
+      "policy":= policy
+      }
+      policy)
+  )
+
+  ;; Capbilities to guard internal functions
+
+  (defcap OFFER:bool
+    ( sale-id:string
     )
+    @doc "Capability to grant internal transaction inside OFFER"
+    true
   )
 
-  (defun get-policies-list:object{policies-list} (policies:object{token-policies})
-    (let* ( (concrete-p:[module{kip.token-policy-v2}] (create-concrete-policy-list policies))
-            (imm-p:[module{kip.token-policy-v2}] (at 'immutable-policies policies))
-            (adj-p:[module{kip.token-policy-v2}] (at 'adjustable-policies policies)) )
-      { 'concrete-policy: concrete-p
-      , 'immutable-policy: imm-p
-      , 'adjustable-policy: adj-p  } )
-  )
-
-  (defun merge-policies-list:[module{kip.token-policy-v2}] (policies:object{token-policies})
-    (let* ( (concrete-p:[module{kip.token-policy-v2}] (create-concrete-policy-list policies ))
-            (concrete-imm-p:[module{kip.token-policy-v2}] (+ concrete-p (at 'immutable-policies policies)))
-            (concrete-imm-adj-p:[module{kip.token-policy-v2}] (+ concrete-imm-p (at 'adjustable-policies policies))) )
-    concrete-imm-adj-p
+  (defcap BUY:bool
+    ( sale-id:string
     )
+    @doc "Capability to grant internal transaction inside BUY"
+    true
   )
 
-  (defun enforce-init:bool (token:object{token-info})
+  (defcap WITHDRAW:bool
+    ( sale-id:string
+    )
+    @doc "Capability to grant internal transaction inside WITHDRAW"
+    true
+  )
+
+
+  ;; Map list of policy functions
+
+  (defun enforce-init:[bool]
+    (token:object{token-info})
     (enforce-ledger)
-    (map-init token (merge-policies-list (at 'policies token)))
+    (with-capability (POLICY_MANAGER)
+      (map-init token (at 'policies token))
+    )
   )
 
-  (defun create-concrete-policy-list:[module{kip.token-policy-v2}] (policies:object{token-policies})
-    (let* ((is-used-policies (lambda (policy:string) (is-used policies policy)))
-           (policy-fields:[string] (filter (is-used-policies) CONCRETE_POLICY_V1_LIST)))
-      (map (get-concrete-policy) policy-fields))
-  )
-
-  (defun is-used:bool (policies:object{token-policies} policy:string)
-    (at policy (at 'concrete-policies policies))
-  )
-
-  (defun enforce-mint:bool
+  (defun enforce-mint:[bool]
     ( token:object{token-info}
       account:string
       guard:guard
       amount:decimal
     )
     (enforce-ledger)
-    (let ((policies:object{token-policies}  (at 'policies token)))
-      (map-mint token account guard amount
-         (merge-policies-list policies))))
+    (with-capability (POLICY_MANAGER)
+      (let ((policies:[module{kip.token-policy-v2}]  (at 'policies token)))
+        (map-mint token account guard amount policies))
+    )
+  )
 
-  (defun enforce-burn:bool
+  (defun enforce-burn:[bool]
     ( token:object{token-info}
       account:string
       amount:decimal
     )
     (enforce-ledger)
-    (let ((policies:object{token-policies}  (at 'policies token)))
-      (map-burn token account amount
-         (merge-policies-list policies))))
+    (with-capability (POLICY_MANAGER)
+      (let ((policies:[module{kip.token-policy-v2}]  (at 'policies token)))
+        (map-burn token account amount policies))
+    )
+  )
 
-  (defun enforce-offer:bool
+  (defun enforce-offer:[bool]
     ( token:object{token-info}
       seller:string
       amount:decimal
       sale-id:string )
     (enforce-ledger)
-    (let ((policies:object{token-policies}  (at 'policies token)))
-      (map-offer token seller amount sale-id
-         (merge-policies-list policies))))
+    (enforce-sale-pact sale-id)
+    (with-capability (POLICY_MANAGER)
+      ;;Check if quote-msg exists
+      (if (exists-msg-object QUOTE-MSG-KEY)
+        ;;true - insert quote message
+        (add-quote sale-id (at 'id token) (read-msg QUOTE-MSG-KEY))
+        ;;false - skip
+        true)
+      (let ((policies:[module{kip.token-policy-v2}]  (at 'policies token)))
+        (map-offer token seller amount sale-id policies))))
 
-  (defun enforce-buy:bool
+  (defun enforce-withdraw:[bool]
+    ( token:object{token-info}
+      seller:string
+      amount:decimal
+      sale-id:string )
+    (enforce-ledger)
+    (enforce-sale-pact sale-id)
+    (with-capability (POLICY_MANAGER)
+      (let ((policies:[module{kip.token-policy-v2}]  (at 'policies token)))
+        (map-withdraw token seller amount sale-id policies))))
+
+  (defun enforce-buy:[bool]
     ( token:object{token-info}
       seller:string
       buyer:string
@@ -139,115 +197,143 @@
       amount:decimal
       sale-id:string )
     (enforce-ledger)
-    (let ((policies:object{token-policies}  (at 'policies token))
-          (quote-policy:module{kip.token-policy-v2, marmalade.fungible-quote-policy-interface-v1} (get-concrete-policy QUOTE_POLICY)))
-      (if (is-used policies QUOTE_POLICY)
-        (let* ((quote:object{marmalade.fungible-quote-policy-interface-v1.quote-schema} (quote-policy::get-quote sale-id))
-               (spec:object{marmalade.fungible-quote-policy-interface-v1.quote-spec} (at 'spec quote))
-               (fungible:module{fungible-v2} (at 'fungible spec))
-               (price:decimal (at 'price spec))
-               (sale-price:decimal (floor (* price amount) (fungible::precision)))
-               (escrow-guard:guard (create-capability-guard (QUOTE_ESCROW sale-id )))
-               (escrow-account:string (create-principal escrow-guard))
-               )
-        (with-capability (QUOTE_ESCROW sale-id)
-          (fungible::transfer-create buyer escrow-account escrow-guard sale-price)
-          (map-buy token seller buyer buyer-guard amount sale-id
-            (filter (!= quote-policy) (merge-policies-list policies)))
-            (quote-policy::enforce-buy token seller buyer buyer-guard amount sale-id)
-          )) true)
-    ))
+    (enforce-sale-pact sale-id)
+    (with-capability (POLICY_MANAGER)
+      (let ((policies:[module{kip.token-policy-v2}]  (at 'policies token)))
+        ;; Checks if quote is saved at offer
+        (if (exists-quote sale-id)
+          ;; quote is used
+          [ ;; Checks if update-quote-price exists
+            (if (exists-msg-decimal UPDATE-QUOTE-PRICE-MSG-KEY)
+              ;;true updates the quotes with the new price
+              (update-quote-price sale-id (read-decimal UPDATE-QUOTE-PRICE-MSG-KEY))
+              ;;false - skip
+              true
+            )
+            (map-escrowed-buy sale-id token seller buyer buyer-guard amount policies)
+          ]
+          ;; quote is not used
+          (map-buy token seller buyer buyer-guard amount sale-id policies)
+        )
+  )))
 
-    (defun get-escrow-account (sale-id:string)
-      { 'account: (create-principal (create-capability-guard (QUOTE_ESCROW sale-id)))
-      , 'guard: (create-capability-guard (QUOTE_ESCROW sale-id))
-      })
-
-    (defun enforce-sale-pact:bool (sale:string)
-      "Enforces that SALE is id for currently executing pact"
-      (enforce (= sale (pact-id)) "Invalid pact/sale id")
-    )
-
-  (defun enforce-transfer:bool
+  (defun enforce-transfer:[bool]
     ( token:object{token-info}
       sender:string
       guard:guard
       receiver:string
       amount:decimal )
     (enforce-ledger)
-    (let ((policies:object{token-policies}  (at 'policies token)))
-      (map-transfer token sender guard receiver amount
-        (merge-policies-list policies))))
+    (with-capability (POLICY_MANAGER)
+      (let ((policies:[module{kip.token-policy-v2}]  (at 'policies token)))
+        (map-transfer token sender guard receiver amount policies))))
 
-  (defun enforce-crosschain:bool
-    ( token:object{token-info}
-      sender:string
-      guard:guard
-      receiver:string
-      target-chain:string
-      amount:decimal )
-    (enforce-ledger)
-    (let ((policies:object{token-policies}  (at 'policies token)))
-      (map-crosschain token sender guard receiver target-chain amount
-        (merge-policies-list policies))))
 
-  (defun enforce-withdraw:bool
-    ( token:object{token-info}
-      seller:string
-      amount:decimal
-      sale-id:string )
-    ;;TODO
-    true
+;; Sale/Escrow Functions
+  (defun enforce-sale-pact:bool (sale:string)
+    "Enforces that SALE is id for currently executing pact"
+    (enforce (= sale (pact-id)) "Invalid pact/sale id")
   )
 
-   ;;utility functions to map policy list
-   (defun token-init (token:object{token-info} policy:module{kip.token-policy-v2})
-     (policy::enforce-init token))
+  (defun map-escrowed-buy:bool
+    ( sale-id:string
+      token:object{token-info}
+      seller:string
+      buyer:string
+      buyer-guard:guard
+      amount:decimal
+      policies:[module{kip.token-policy-v2}]
+    )
+    (let* (
+           (escrow-account:object{fungible-account} (get-escrow-account sale-id))
+           (quote:object{quote-schema} (get-quote-info sale-id))
+           (spec:object{quote-spec} (at 'spec quote))
+           (fungible:module{fungible-v2} (at 'fungible spec))
+           (buyer-fungible-account-name:string (read-msg BUYER-FUNGIBLE-ACCOUNT-MSG-KEY))
+           (seller-fungible-account:object{fungible-account} (at 'seller-fungible-account spec))
+           (price:decimal (at 'price spec))
+           (sale-price:decimal (floor (* price amount) (fungible::precision)))
+      )
+       ;; transfer fungible to escrow account
+       (fungible::transfer-create buyer-fungible-account-name (at 'account escrow-account) (at 'guard escrow-account) sale-price)
 
-   (defun map-init (token:object{token-info} policy-list:[module{kip.token-policy-v2}])
-     (map (token-init token) policy-list))
+       (with-capability (ESCROW sale-id)
+         ;; Run policies::enforce-buy
+         (map-buy token seller buyer buyer-guard amount sale-id policies)
+         ;; Transfer Escrow account to seller
+         (let (
+               (balance:decimal (fungible::get-balance (at 'account escrow-account)))
+             )
+             (install-capability (fungible::TRANSFER (at 'account escrow-account) (at 'account seller-fungible-account) balance))
+             (fungible::transfer (at 'account escrow-account) (at 'account seller-fungible-account) balance)
+         )
+       )
+       true
+    )
+  )
 
-   (defun token-mint (token:object{token-info} account:string guard:guard amount:decimal policy:module{kip.token-policy-v2})
-     (policy::enforce-mint token account guard amount))
+  ;;utility functions
 
-   (defun map-mint (token:object{token-info} account:string guard:guard amount:decimal policy-list:[module{kip.token-policy-v2}])
-     (map (token-mint token account guard amount) policy-list))
+  (defun exists-quote:bool (sale-id:string)
+    @doc "Looks up quote table for quote"
+    (= (take 6 (typeof (try false (get-quote-info sale-id)))) "object")
+  )
 
-   (defun token-offer (token:object{token-info} account:string amount:decimal sale-id:string policy:module{kip.token-policy-v2})
-     (policy::enforce-offer token account amount sale-id))
+  (defun exists-msg-decimal:bool (msg:string)
+    @doc "Checks env-data field and see if the msg is a decimal"
+    (= (typeof  (try false (read-decimal msg))) "decimal")
+  )
 
-   (defun map-offer (token:object{token-info} account:string amount:decimal sale-id:string policy-list:[module{kip.token-policy-v2}])
-     (map (token-offer token account amount sale-id) policy-list))
+  (defun exists-msg-object:bool (msg:string)
+    @doc "Checks env-data field and see if the msg is a object"
+    (= (take 6 (typeof  (try false  (read-msg msg)))) "object")
+  )
 
-   (defun token-burn (token:object{token-info} account:string amount:decimal policy:module{kip.token-policy-v2})
-     (policy::enforce-burn token account amount))
+ (defun token-init (token:object{token-info} policy:module{kip.token-policy-v2})
+  (policy::enforce-init token))
 
-   (defun map-burn (token:object{token-info} account:string amount:decimal policy-list:[module{kip.token-policy-v2}])
-     (map (token-burn token account amount) policy-list))
+ (defun map-init (token:object{token-info} policy-list:[module{kip.token-policy-v2}])
+  (map (token-init token) policy-list))
 
-   (defun token-buy (token:object{token-info} seller:string buyer:string buyer-guard:guard amount:decimal sale-id:string policy:module{kip.token-policy-v2})
-     (policy::enforce-buy token seller buyer buyer-guard amount sale-id))
+ (defun token-mint (token:object{token-info} account:string guard:guard amount:decimal policy:module{kip.token-policy-v2})
+  (policy::enforce-mint token account guard amount))
 
-   (defun map-buy (token:object{token-info} seller:string buyer:string buyer-guard:guard amount:decimal sale-id:string policy-list:[module{kip.token-policy-v2}])
-     (map (token-buy token seller buyer buyer-guard amount sale-id) policy-list))
+ (defun map-mint (token:object{token-info} account:string guard:guard amount:decimal policy-list:[module{kip.token-policy-v2}])
+  (map (token-mint token account guard amount) policy-list))
 
-   (defun token-transfer (token:object{token-info} sender:string guard:guard receiver:string amount:decimal policy:module{kip.token-policy-v2})
-     (policy::enforce-transfer  token sender guard receiver amount))
+ (defun token-burn (token:object{token-info} account:string amount:decimal policy:module{kip.token-policy-v2})
+  (policy::enforce-burn token account amount))
 
-   (defun map-transfer (token:object{token-info} sender:string guard:guard receiver:string amount:decimal policy-list:[module{kip.token-policy-v2}])
-     (map (token-transfer  token sender guard receiver amount) policy-list))
+ (defun map-burn (token:object{token-info} account:string amount:decimal policy-list:[module{kip.token-policy-v2}])
+  (map (token-burn token account amount) policy-list))
 
-   (defun token-crosschain (token:object{token-info} sender:string guard:guard receiver:string target-chain:string amount:decimal policy:module{kip.token-policy-v2})
-     (policy::enforce-crosschain  token sender guard receiver target-chain amount))
+ (defun token-offer (token:object{token-info} account:string amount:decimal sale-id:string policy:module{kip.token-policy-v2})
+  (policy::enforce-offer token account amount sale-id))
 
-   (defun map-crosschain (token:object{token-info} params:object sender:string guard:guard receiver:string target-chain:string amount:decimal policy-list:[module{kip.token-policy-v2}])
-     (map (token-crosschain  token sender guard receiver target-chain amount) policy-list))
+ (defun map-offer (token:object{token-info} account:string amount:decimal sale-id:string policy-list:[module{kip.token-policy-v2}])
+  (map (token-offer token account amount sale-id) policy-list))
 
+  (defun token-withdraw (token:object{token-info} account:string amount:decimal sale-id:string policy:module{kip.token-policy-v2})
+   (policy::enforce-withdraw token account amount sale-id))
 
+  (defun map-withdraw (token:object{token-info} account:string amount:decimal sale-id:string policy-list:[module{kip.token-policy-v2}])
+   (map (token-withdraw token account amount sale-id) policy-list))
+
+ (defun token-buy (token:object{token-info} seller:string buyer:string buyer-guard:guard amount:decimal sale-id:string policy:module{kip.token-policy-v2})
+  (policy::enforce-buy token seller buyer buyer-guard amount sale-id))
+
+ (defun map-buy:[bool] (token:object{token-info} seller:string buyer:string buyer-guard:guard amount:decimal sale-id:string policy-list:[module{kip.token-policy-v2}])
+  (map (token-buy token seller buyer buyer-guard amount sale-id) policy-list))
+
+ (defun token-transfer (token:object{token-info} sender:string guard:guard receiver:string amount:decimal policy:module{kip.token-policy-v2})
+  (policy::enforce-transfer  token sender guard receiver amount))
+
+ (defun map-transfer (token:object{token-info} sender:string guard:guard receiver:string amount:decimal policy-list:[module{kip.token-policy-v2}])
+  (map (token-transfer  token sender guard receiver amount) policy-list))
 )
 
 (if (read-msg 'upgrade )
   ["upgrade complete"]
-  [ (create-table concrete-policy-table)
-    (create-table ledger-guard-table)
+  [ (create-table ledgers)
+    (create-table concrete-policies)
   ])

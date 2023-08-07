@@ -1,6 +1,6 @@
 (load "../kda-env/init.repl")
 
-(begin-tx "Load in the nft environment")
+(begin-tx "Load in the environment")
 
 (env-keys ["ku-admin" "ku-ops" "creatorGuard" "bob"])
 (env-data
@@ -100,3 +100,17 @@
 ;  (begin-tx "confirm payment")
 (free.kadenai-pay.get-payment "opuV_QeldGm3LFFEZQJbfDfZ4_P9rsqSr1nD7zM6jiA")
 ;  (commit-tx)
+
+(begin-tx "enter donation")
+(env-sigs [
+    { 'key: "alice-key"
+    , 'caps:
+      [
+       (coin.TRANSFER "alice" "bob" 1.0)
+      ]
+    }])
+(free.kadenai-pay.create-donation 1.0 (read-msg 'account) coin)
+
+;  (free.kadenai-pay.create-collection (read-msg 'collection) coin )
+;  (free.kadenai-pay.update-payment "alice" "test-collection" 0.15 coin)
+(commit-tx)

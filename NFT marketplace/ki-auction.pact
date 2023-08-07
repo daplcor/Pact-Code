@@ -17,115 +17,91 @@
       true
     )
 
-    (use free.util-random)
 
     ; #####################################################
 
+      (use fungible-quote-policy-v1)
+      (use marmalade.ledger)
+      
       (defschema auction
-      ;item:object{poly-fungible-v2}
-      item:string
-      amount:decimal
-      fungible:module{fungible-v2}
-      minPrice:decimal
-      startTime:time
-      endTime:time
-      owner:string
-      highestBid:decimal
-      highestBidder:string
-      escrowId:string
+        id:string @doc "Primary key"
+        token-id:string  
+        seller:string
+        start-time:time 
+        end-time:time
+        reserve-price:decimal
+        highest-bid:decimal
+        highest-bidder:string 
+        completed:bool @doc "True when auction closed"
+      )
+    
+      (deftable auctions:{auction} @doc "Auction data")
+    
+      (defun create-auction:bool 
+        (token-id:string, seller:string, end-time:time, reserve-price:decimal)
+        
+        (insert auctions (format "auction-{}" [token-id])
+          {
+            "id": (format "auction-{}" [token-id])  
+            "token-id": token-id,
+            "seller": seller,
+            "start-time": (at 'block-time (chain-data)),  
+            "end-time": end-time,
+            "reserve-price": reserve-price,
+            "highest-bid": 0.0,
+            "completed": false  
+          }
+        )
+    
+      )
+    
+      (defun bid:bool 
+        (auction-id:string, bidder:string, bid-amount:decimal)
+    
+        (with-read auctions auction-id {
+          "highest-bid":= current-high-bid,
+          "reserve-price":= reserve  
+        }
+    
+        (enforce (> bid-amount current-high-bid) "Bid too low")
+        (enforce (>= bid-amount reserve) "Bid lower than reserve")
+    
+        (fungible-quote-policy-v1.place-bid 
+          auction-id bidder (bid-escrow-account auction-id bidder)  
+          1 bid-amount)
+    
+        (update auctions auction-id {
+          "highest-bid": bid-amount,
+          "highest-bidder": bidder
+        })
+    
+      )
+    
+      (defun close-auction:bool (auction-id:string)
+    
+        (with-read auctions auction-id {
+          "token-id":= token-id, 
+          "seller":= seller,
+          "highest-bidder":= winner,
+          "highest-bid":= winning-bid
+        }
+    
+        (if (> winning-bid 0.0)
+          (begin
+            (fungible-quote-policy-v1.accept-bid
+              (bid-escrow-account auction-id winner)
+              winner auction-id (escrow-account auction-id))
+            (ledger.transfer token-id seller winner 1)
+          )
+        )
+    
+        (update auctions auction-id {"completed": true})
+    
+      )
+    
     )
   
-    (deftable auctions:{auction})
   
-    (defun list-item
-      ( 
-        listData:object
-        amount:decimal
-        minPrice:decimal
-        fungible:module{fungible-v2}
-       )
-      @doc
-        "Transfer the amount of items into an escrow account and store the start and end times of the auction along with the min amount and the fungible that is required for the purchase."
-      (let* ( (escrowId (gen-uuid-rfc-4122-v4)) 
-              (escrow-account (format "escrow-{}" (get-ESCROW-account)))
-              (escrow-guard (get-ESCROW-guard))
-              (item (at "item" listData))
-              (owner (at "owner" listData))
-              (startTime (at "startTime" listData))
-              (endTime (at "endTime" listData))  
-            )
-        (fungible::create-account item escrow-account escrow-guard)
-        (fungible::transfer item owner escrow-account amount)
-        (insert auctions (at "item" listData)
-            { 
-                "item": item,
-                "amount": amount,
-                "fungible": fungible,
-                "minPrice": minPrice,
-                "startTime": startTime,
-                "endTime": endTime,
-                "highestBid": 0.0,
-                "highestBidder": "",
-                "escrowId": escrowId           
-            }
-                listData
-            )
-    )))
-  
-    (defun place-bid
-      ( escrowId:string
-        bidder:string
-        bidAmount:decimal
-      )
-      @doc
-        "Place a bid on an auction only if the current time is between the start/end times and the current bid is less than the bidAmount. Transfer the bidAmount of fungible-v2 into the escrow and transfer the current bid's fungible back to the owner."
-      (let* ( (auction (require (read auctions escrowId) "Auction not found"))
-              (current-time (now))
-            )
-        (enforce (and (>= current-time (at "startTime" auction))
-                      (<= current-time (at "endTime" auction)))
-                 "Auction is not active")
-        (enforce (< (highestBid auction) bidAmount)
-                 "Bid amount is not greater than the current highest bid")
-        (fungible::transfer
-          (fungible.id auction.purchase-fungible)
-          bidder
-          (format "escrow-{}" [escrowId])
-          bidAmount)
-        (when (not (empty? (highestBidder auction)))
-          (fungible::transfer
-            (purchase-fungible.id auction.purchase-fungible)
-            (format "escrow-{}" [escrowId])
-            (highestBidder auction)
-            (highestBidder auction)))
-        (update auctions escrowId { "highestBid": bidAmount, "highestBidder": bidder })
-    ))
-  
-    (defun complete-auction
-      ( escrowId:string
-      )
-      @doc
-        "Complete the auction if the current time is after the endTime. Transfer the NFT to the highest bidder and the funds to the seller."
-      (let* ( (auction (require (read auctions escrowId) "Auction not found"))
-              (current-time (now))
-            )
-        (enforce (> current-time (at "endTime" auction))
-                 "Auction is still active")
-  
-        (fungible::transfer
-          (auction.item.id auction.item)
-          (format "escrow-{}" [escrowId])
-          (auction.highestBidder auction)
-          (auction.amount auction))
-  
-        (fungible::transfer
-          (purchase-fungible.id auction.purchase-fungible)
-          (format "escrow-{}" [escrowId])
-          (auction.item.owner auction.item)
-          (highestBid auction))
-  
-        (delete auctions escrowId)
-    ))
   
 ; #############################################
 ;                 ESCROW Account

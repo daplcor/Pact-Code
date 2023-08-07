@@ -1,0 +1,94 @@
+(load "../kda-env/init.repl")
+
+(begin-tx "Load in the environment")
+
+(env-keys ["kadmin" "ops" "bob"])
+(env-data
+  {
+    "admin": {
+      "keys": [
+        "admin"
+      ],
+      "pred": "keys-any"
+    },
+    "ops": {
+      "keys": [
+        "ops"
+      ],
+      "pred": "keys-any"
+    },
+    "bob": {
+        "keys": [
+          "bob"
+        ],
+        "pred": "keys-any"
+      },
+      "ks": {
+        "keys": [
+          "bob"
+        ],
+        "pred": "keys-any"
+      },
+    "creatorGuard": {
+        "keys": [ "creatorGuard" ],
+        "pred": "keys-any"
+      },
+    "collection": {
+      "name": "test-collection",
+      "totalSupply": 15.0,
+      "category": "Artwork",
+      "creator": "alice",
+      "paid": false,
+      "description": "test-description",
+      "creatorGuard": {
+        "keys": [ "creatorGuard" ],
+        "pred": "keys-any"
+      }
+    },
+    "tester": {
+        "name": "tester",
+        "totalSupply": 15.0,
+        "category": "Artwork",
+        "creator": "alice",
+        "paid": false,
+        "description": "test-description",
+        "creatorGuard": {
+          "keys": [ "creatorGuard" ],
+          "pred": "keys-any"
+        }
+      },
+    "collection-name": "test-collection",
+    "account": "alice",
+    "can-offer": true,
+    "can-buy": true,
+    "can-transfer": true,
+    "can-burn": true,
+    "can-xchain": true,
+    "upgrade": false
+  }
+)
+
+(load "kadenai-donate.pact")
+
+(commit-tx)
+
+(begin-tx "create bank")
+(env-keys ["ops"])
+(n_f9b22d2046c2a52575cc94f961c8b9a095e349e7.kadenai-donate.update-string-value "BANK" "bob")
+(commit-tx)
+
+
+
+(begin-tx "enter donation")
+(env-sigs [
+    { 'key: "alice-key"
+    , 'caps:
+      [
+       (coin.TRANSFER "alice" "bob" 1.0)
+      ]
+    }])
+(n_f9b22d2046c2a52575cc94f961c8b9a095e349e7.kadenai-donate.create-donation 1.0 (read-msg 'account) coin)
+
+;  (free.kadenai-pay.create-collection (read-msg 'collection) coin )
+;  (free.kadenai-pay.update-payment "alice" "test-collection" 0.15 coin)
+(commit-tx)

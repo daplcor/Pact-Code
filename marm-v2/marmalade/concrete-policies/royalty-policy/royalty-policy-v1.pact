@@ -8,10 +8,11 @@
     (enforce-guard (keyset-ref-guard 'marmalade-admin )))
 
   (use marmalade.policy-manager)
-  (use marmalade.fungible-quote-policy-v1)
-  (use marmalade.fungible-quote-policy-interface-v1 [quote-spec quote-schema])
+  (use marmalade.quote-manager)
+  (use marmalade.quote-manager [quote-spec quote-schema])
   (implements kip.token-policy-v2)
-  (use kip.token-policy-v2 [token-info QUOTE_POLICY])
+  (use kip.token-policy-v2 [token-info])
+
 
   (defschema royalty-schema
     fungible:module{fungible-v2}
@@ -21,6 +22,7 @@
   )
 
   (deftable royalties:{royalty-schema})
+  (defun rs () (select royalties (constantly true)))
 
   (defconst ROYALTY_SPEC "royalty_spec"
     @doc "Payload field for token spec")
@@ -47,7 +49,6 @@
   (defun enforce-init:bool
     ( token:object{token-info}
     )
-    (enforce (is-used (at 'policies token) QUOTE_POLICY) "quote policy must be turned on")
     (enforce-ledger)
     (let* ( (spec:object{royalty-schema} (read-msg ROYALTY_SPEC))
             (fungible:module{fungible-v2} (at 'fungible spec))
@@ -113,18 +114,17 @@
       , 'creator:= creator:string
       , 'royalty-rate:= royalty-rate:decimal
       }
-      (let* ( (quote-policy:module{marmalade.fungible-quote-policy-interface-v1} (marmalade.policy-manager.get-concrete-policy QUOTE_POLICY))
-              (quote:object{quote-schema} (quote-policy::get-quote sale-id))
+      (let* ( (quote:object{quote-schema} (get-quote-info sale-id))
               (spec:object{quote-spec} (at 'spec quote))
               (price:decimal (at 'price spec))
               (sale-price:decimal (* amount price))
               (escrow-account:string (at 'account (get-escrow-account sale-id)))
               (royalty-payout:decimal
                  (floor (* sale-price royalty-rate) (fungible::precision))))
-        (enforce (= (at 'id quote) (at 'id token)) "incorrect sale token")
+        (enforce (= (at 'token-id quote) (at 'id token)) "incorrect sale token")
         (if
           (> royalty-payout 0.0)
-          [ (install-capability (coin.TRANSFER escrow-account creator royalty-payout))
+          [ (install-capability (fungible::TRANSFER escrow-account creator royalty-payout))
             (emit-event (ROYALTY sale-id (at 'id token) royalty-payout creator))
             (fungible::transfer escrow-account creator royalty-payout)
           ]
@@ -137,17 +137,6 @@
       sender:string
       guard:guard
       receiver:string
-      amount:decimal )
-    (enforce-ledger)
-    (enforce false "Transfer prohibited")
-  )
-
-  (defun enforce-crosschain:bool
-    ( token:object{token-info}
-      sender:string
-      guard:guard
-      receiver:string
-      target-chain:string
       amount:decimal )
     (enforce-ledger)
     (enforce false "Transfer prohibited")

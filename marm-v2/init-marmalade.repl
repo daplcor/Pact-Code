@@ -10,11 +10,13 @@
 (load "./marmalade/kip/poly-fungible-v3.pact")
 
 (env-data {'ns:'marmalade, 'upgrade:false})
-(load "./marmalade/concrete-policies/fungible-quote-policy/fungible-quote-policy-interface-v1.pact")
+(load "./marmalade/quote-manager/quote-manager.pact")
+
 (load "./marmalade/policy-manager/policy-manager.pact")
+
 (load "./marmalade/ledger.pact")
-(load "./marmalade/concrete-policies/non-fungible-policy/non-fungible-policy-v1.pact")
-;  (load "./marmalade/policy.pact")
+;  (load "./marmalade/concrete-policies/non-fungible-policy/non-fungible-policy-v1.pact")
+;  (load "./marmalade/concrete-policies/royalty-policy/royalty-policy-v1.pact")
 ;  (load "./marmalade/collection-policy.pact")
 
 
