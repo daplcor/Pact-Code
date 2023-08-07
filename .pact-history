@@ -61,7 +61,7 @@ ls
 (free.kadenai-minter.mint "bob" "test-uri" 0 util.DEFAULT_POLICIES )
 (free.kadenai-minter.mint "bob" "test-uri" 0 util.DEFAULT_POLICIES )
 (env-keys ["account"])
-(free.kadenai-minter.mint "bob" "test-uri" 0 util.DEFAULT_POLICIES )
+(free.kadenai-minter.mint "bob" "test-uri" 0 util.DEFAULT_POLICIES ) 
 (load "kadenai-minter.repl")
 (free.kadenai-minter.mint "bob" "test-uri" 0 util.DEFAULT_POLICIES )
 (load "kadenai-minter.repl")

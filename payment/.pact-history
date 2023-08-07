@@ -28,8 +28,7 @@
 (load "kadenai-pay.repl")
 (load "kadenai-pay.repl")
 (load "kadenai-pay.repl")
-quit
-exit
+
 (load "kadenai-pay.repl")
 (load "kadenai-pay.repl")
 (load "kadenai-pay.repl")
