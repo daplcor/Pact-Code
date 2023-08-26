@@ -167,6 +167,17 @@
      } )
   )
 
+  (defun get-all-id(id:string)
+  (select ledger (where 'id (= id))))
+
+  (defun get-all-account(account:string)
+    (select ledger (where 'account (= account))))
+
+  
+  ;  (with-read ledger acc {"balance":= balance, "account":= account, "id":= id} )
+  ;     (format "account {} balance {} id {}" [account, balance, id])
+  ;  (if balance > 0.0)
+
   (defun create-account:bool
     ( id:string
       account:string

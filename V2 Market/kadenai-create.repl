@@ -198,7 +198,7 @@
 
  
 ;  (begin-tx "Gas Testing")
-;    (env-gasmodel "table") (env-gaslimit 10000) (env-gas 0) (marmalade.collection-policy-v1.get-collection "test-collection")  (env-gas)
+;    (env-gasmodel "table") (env-gaslimit 10000) (env-gas 0) (marmalade.ledger.get-all-account "k:2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652")  (env-gas)
 ;  (commit-tx)
 
 (begin-tx "Load ledger")
@@ -325,7 +325,8 @@
    (env-sigs [
     { 'key: "2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"
   , 'caps: [
-    (marmalade.ledger.OFFER "t:6Ms0Chkvosh8-BfyESpDzXLhwgDz_uOQ4CUxgW95cGc" "k:2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652" 1.0 (time "2023-08-20T11:26:35Z"))]  
+    ;  (marmalade.ledger.OFFER "t:6Ms0Chkvosh8-BfyESpDzXLhwgDz_uOQ4CUxgW95cGc" "k:2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652" 1.0 (time "2023-08-20T11:26:35Z"))]  
+    (marmalade.ledger.TRANSFER "t:6Ms0Chkvosh8-BfyESpDzXLhwgDz_uOQ4CUxgW95cGc" "k:2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652" (free.kadenai-create.bid-escrow-account (read-msg "sale-id")) 1.0)]
   }])
 (free.kadenai-create.create-auction "t:6Ms0Chkvosh8-BfyESpDzXLhwgDz_uOQ4CUxgW95cGc" "k:2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652" (time "2023-08-20T11:26:35Z") 5.0 )
 (commit-tx)

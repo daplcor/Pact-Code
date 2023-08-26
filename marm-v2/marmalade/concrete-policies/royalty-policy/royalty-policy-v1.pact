@@ -139,7 +139,7 @@
       receiver:string
       amount:decimal )
     (enforce-ledger)
-    (enforce false "Transfer prohibited")
+    (enforce true "Transfer prohibited")
   )
 
   (defun enforce-withdraw:bool

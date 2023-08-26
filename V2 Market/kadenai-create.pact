@@ -211,7 +211,7 @@
         )
   
         ; Call init-collection in the collection-policy-v1 contract with the required fields
-        (n_42174c7f0ec646f47ba227ffeb24714da378f4d1.collection-policy-v1.create-collection
+        (marmalade.collection-policy-v1.create-collection
           collection-name
           collection-size
           operator-guard
@@ -831,100 +831,6 @@
 )
 )
 
-
-; Auctions
-
-;  (deftable auctions:{auction-schema})
-;  (deftable auction-bids:{auction-bid-schema})
-
-;  (defschema auction-schema
-;    token-id:string
-;    start-time:time
-;    end-time:time
-;    seller:string
-;    high-bid:decimal
-;    high-bidder:string
-;    status:string
-;  )
-
-;  (defschema auction-bid-schema
-;    auction-id:string
-;    bidder:string
-;    bid:decimal
-;    timestamp:time
-;  )
-
-;  (defun start-auction:bool
-;    ( token-id:string
-;      start-time:time
-;      end-time:time
-;      seller:string
-;      amount:decimal
-;    )
-;    (insert auctions token-id { "token-id": token-id, "start-time": start-time, "end-time": end-time, "seller": seller, "high-bid": 0.0, "high-bidder": "", "status": "open"  })
-;      ;  (marmalade.ledger.sale 
-;      ;    token-id 
-;      ;    seller 
-;      ;    amount 
-;      ;    end-time
-;      ;    )
-;    )
-
-
-
-;  (defun place-bid:bool
-;    ( tokenId:string
-;      auction-id:string
-;      bidder:string
-;      bid:decimal
-;    )
-;    (let* (
-;      (auction:object{auction-schema} (read auctions auction-id))
-;      (high-bid:decimal (at 'high-bid auction))
-;      (start-time:time (at 'start-time auction))
-;      (end-time:time (at 'end-time auction))
-;      (current-time:time (curr-time))
-;      (status:string (at 'status auction))
-;      (buyerGuard (at "guard"(coin.details bidder)))
-;    )
-;      (enforce (> bid high-bid) "Bid must be higher than current bid")
-;      (enforce (and (>= current-time start-time) (<= current-time end-time)) "Bid can only be placed during the auction period")
-;      (enforce (= status "open") "Auction is not open")
-;      (update auctions auction-id { "high-bid": bid, "high-bidder": bidder })
-;      ;; Transfer NFT from bidder to escrow account
-;      ;; Call a function like `transfer-to-escrow` here
-;      (insert auction-bids bidder { "auction-id": auction-id, "bidder": bidder, "bid": bid, "timestamp": current-time })
-;    (marmalade.fungible-quote-policy-v1.place-bid
-;      tokenId
-;      bidder
-;      buyerGuard
-;      1.0
-;      bid
-;      auction-id
-;      )
-;      )
-;  )
-
-;  (defun end-auction:bool
-;    (auction-id:string)
-;    (let* (
-;      (auction:object{auction-schema} (read auctions auction-id))
-;      (end-time:time (at 'end-time auction))
-;      (high-bidder:string (at 'high-bidder auction))
-;      (seller:string (at 'seller auction))
-;      (high-bid:decimal (at 'high-bid auction))
-;      (status:string (at 'status auction))
-;    )
-;      (enforce (>= (curr-time) end-time) "Auction is not yet over")
-;      (enforce (= status "open") "Auction is not open")
-;      ;; Transfer ownership of NFT to high bidder
-;      ;; Call a function like `transfer-from-escrow` here
-;      ;; Transfer high bid to seller here
-;      ;; Call a function like `transfer-funds` here
-;      (update auctions auction-id { "status": "completed" })
-;    )
-;  )
-
 ;  (use fungible-quote-policy-v1)
 (use marmalade.ledger)
 
@@ -942,14 +848,23 @@
 
 (deftable auctions:{auction} @doc "Auction data")
 
+;  (defcap AUC
+;    (compose-capability (SALE_PRIVATE id))
+;    (compose-capability (DEBIT token-id seller))
+;    (compose-capability (CREDIT token-id (sale-account)))
+;      )
+
 (defun create-auction:bool 
   (token-id:string
    seller:string
    end-time:time
    reserve-price:decimal
    )
-   (let
-  ((id:string (hash-sale token-id seller end-time)))
+   (let*
+  ((id:string (hash-sale token-id seller end-time))
+   (escrow-account:string (bid-escrow-account id)
+   )
+  )
   (insert auctions id
     {
       "id": id,  
@@ -963,13 +878,33 @@
       "completed": false  
     }
   )
+  
+
+
+
+  (require-capability (SALE_PRIVATE id))
+  (let ((token (get-token-info id)))
+    (marmalade.policy-manager.enforce-offer token seller 1.0 (pact-id)))
+  
+    (let
+      (
+        (sender (debit token-id seller 1.0))
+        (receiver (credit token-id (sale-account) (create-capability-pact-guard (SALE_PRIVATE id)) 1.0))
+      )"hi")
+  
+    ;   (marmalade.ledger.transfer 
+  ;    token-id
+  ;    seller
+  ;    escrow-account
+  ;    1.0
+  ;    )
+  ;  (marmalade.ledger.sale 
+  ;    token-id
+  ;    seller
+  ;    1.0
+  ;    end-time
+  ;    )
    )
-  (marmalade.ledger.sale 
-    token-id
-    seller
-    1.0
-    end-time
-    )
 )
 
 (defun bid:bool 
@@ -993,10 +928,12 @@
   ;    bid-amount
   ;    id
   ;  )
-  
   (let* (
-    (escrow-account:object{fungible-account} (marmalade.policy-manager.get-escrow-account id))
+    (escrow-account:object{fungible-account} (bid-escrow-account id))
     )
+  ;  (let* (
+  ;    (escrow-account:object{fungible-account} (marmalade.policy-manager.get-escrow-account id))
+  ;    )
   ;  (coin.TRANSFER bidder escrow bid-amount)
 
   (coin.transfer bidder (at 'account escrow-account) bid-amount)
@@ -1021,12 +958,12 @@
     "highest-bidder":= winner, 
     "highest-bid":= winning-bid
   }
-  ;  (let* (
-  ;    (bid-id:string (marmalade.fungible-quote-policy-v1.get-bid-id id winner))
-  ;    (escrow:string (marmalade.fungible-quote-policy-v1.bid-escrow-account id))
-  ;    (escrow-guard:guard (create-capability-guard (marmalade.fungible-quote-policy-v1.BID_PRIVATE id)))
-  ;    )
-  ;  ;  (if (> winning-bid 0.0)
+  (let* (
+    (bid-id:string (get-bid-id id winner))
+    (escrow:string (bid-escrow-account id))
+    (escrow-guard:guard (create-capability-guard (BID_PRIVATE id)))
+    )
+  ;  (if (> winning-bid 0.0)
 
   ;  (marmalade.fungible-quote-policy-v1.accept-bid
   ;   bid-id
@@ -1035,13 +972,13 @@
   ;   escrow
   ;   escrow-guard
   ;  )
-  ;  ;  )
+  ;  )
   ;    (marmalade.ledger.transfer token-id seller winner 1)
 
     (update auctions auction-id {"completed": true})
   ;  )
 )
-)
+))
 
   (defun auc 
     ()(select auctions (constantly true)))
@@ -1221,6 +1158,49 @@
   (defun get-SPLITTER-account ()
     (create-principal (create-SPLITTER-guard))
   )
+
+  ; New Escrow Process from fungible-quote-policy
+  (defcap BID_PRIVATE:bool (bid-id:string) true)
+
+  (defun bid-escrow-account:string (bid-id:string)
+  (create-principal (create-capability-guard (BID_PRIVATE bid-id)))
+)
+
+(defcap DEBIT (id:string sender:string)
+    (enforce-guard (account-guard id sender))
+  )
+
+  (defcap CREDIT (id:string receiver:string) true)
+
+  (defun sale-active:bool (timeout:time)
+  @doc "Sale is active until TIMEOUT block height."
+  (< (at 'block-time (chain-data)) timeout)
+)
+
+(defcap AUCTION:bool
+  (id:string seller:string amount:decimal timeout:time)
+  @doc "Managed cap for SELLER offering AMOUNT of token ID until TIMEOUT."
+  @managed
+  (enforce (sale-active timeout) "SALE: invalid timeout")
+  (compose-capability (DEBIT id seller))
+  (compose-capability (CREDIT id (sale-account)))
+)
+
+(defcap SALE_PRIVATE:bool (sale-id:string) true)
+
+(defun sale-account:string ()
+    (create-principal (create-capability-pact-guard (SALE_PRIVATE (pact-id))))
+  )
+
+  ; Test this for passing the royalty requirement
+  (defun get-escrow-account:object{fungible-account} (sale-id:string)
+  { 'account: (create-principal (create-capability-guard (ESCROW sale-id)))
+  , 'guard: (create-capability-guard (ESCROW sale-id))
+  })
+
+(defun get-bid-id:string (sale-id:string buyer:string)
+  (format "{}-{}" [sale-id buyer])
+)
 
 ; #############################################
 ;        Offline Collection Creation

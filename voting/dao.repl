@@ -1,0 +1,39 @@
+(load "../kda-env/init.repl")
+
+(begin-tx "Load in the environment")
+
+(env-keys ["ku-admin" "ku-ops" "creatorGuard" "bob"])
+(env-data
+  {
+    "ku-admin": {
+      "keys": [
+        "ku-admin"
+      ],
+      "pred": "keys-any"
+    },
+    "ku-ops": {
+      "keys": [
+        "ku-ops"
+      ],
+      "pred": "keys-any"
+    },
+    "bob": {
+        "keys": [
+          "bob"
+        ],
+        "pred": "keys-any"
+      },
+    "creatorGuard": {
+        "keys": [ "creatorGuard" ],
+        "pred": "keys-any"
+      },
+
+
+    "upgrade": false
+  }
+)
+
+(load "dao.pact")
+
+(commit-tx)
+
