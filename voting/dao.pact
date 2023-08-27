@@ -126,7 +126,7 @@
     )
   )
 
-  (defun update-tweet-id:bool
+  (defun update-tweet-id:string
     (proposalId:string tweetId:string)
     (update proposals proposalId {"tweetId": tweetId})
   )
