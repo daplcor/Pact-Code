@@ -36,10 +36,21 @@
 (load "dao.pact")
 (commit-tx)
 
-(begin-tx)
-(free.dao.create-proposal "test" "just for us" ["yes", "no"] (read-msg 'end))
+(begin-tx "Create Proposal")
+(free.dao.create-proposal "test" "just for us" ["yes", "no"] (read-msg 'end) 50)
 
-(free.dao.update-tweet-id "d:kosgNmlD4q_RHrwOri5TqTvxd6T881vMZNUDcE5l4gI" "jfiwefjwf84f4f48n4")
+(free.dao.update-tweet-id "d:kosgNmlD4q_RHrwOri5TqTvxd6T881vMZNUDcE5l4gI" "jfiwefjwf84f4f48n4" )
 
 (commit-tx)
 
+(begin-tx)
+
+(env-chain-data { "block-time": (time "2023-01-05T00:00:00Z")})
+
+(commit-tx)
+
+;  (begin-tx "Update Twitter Results")
+;  (free.dao.update-twitter-results "d:kosgNmlD4q_RHrwOri5TqTvxd6T881vMZNUDcE5l4gI" [{"choice": "yes", "count": 50},{"choice": "no", "count": 20}])
+;  (commit-tx)
+
+;  (env-gasmodel "table") (env-gaslimit 100000) (env-gas 0) 
