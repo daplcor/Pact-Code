@@ -21,10 +21,11 @@
     id:string
     name:string
     description:string
+    tweetId:string
     choices:[string]
     start:time
     end:time
-    votes:{vote-schema}
+    votes:[object:{vote-schema}]
   )
 
   (deftable proposals:{proposal})
@@ -34,23 +35,25 @@
         name:string
         description:string
         choices:[string]
-        start:time 
         end:time
         )
-    (let ((id:string (hash-id name)))
+    (let* ((id:string (hash-id name))
+    (ct:time (curr-time))
+    )
     ;  @doc "Create a new proposal"
-    (with-capability (OPS)
-      (insert proposals id {
+    ;  (with-capability (OPS)
+      (insert proposals id 
+        {
         "id": id,
         "name": name,
         "description": description,
-        "choices": [choices],
-        "start": start,
+        "tweetId": "",
+        "choices": choices,
+        "start": ct,
         "end": end,
-        "votes": {}
+        "votes":[]
       }
-      id
-      )
+    ;)
     )
     )
   )
@@ -107,10 +110,20 @@
     )
   )
 
+  (defun update-tweet-id:bool
+    (proposalId:string tweetId:string)
+    (update proposals proposalId {"tweetId": tweetId})
+  )
+  
+;    (defun update-tally:bool
+;      (proposalId:string newTally:{string:integer})
+;      (update proposals proposalId {"votes": newTally})
+;    )
+  
+
   (defun hash-id:string
     (name:string)
-    (format "d:{}"
-    (hash name)
+    (format "d:{}" [(hash name)]
     )
   )
 

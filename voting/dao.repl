@@ -27,13 +27,16 @@
         "keys": [ "creatorGuard" ],
         "pred": "keys-any"
       },
-
-
+      "start": {"time": "2023-01-03T00:00:00Z"},
+    "end": {"time": "2023-01-05T00:00:00Z"},
     "upgrade": false
   }
 )
 
 (load "dao.pact")
+(commit-tx)
 
+(begin-tx)
+(free.dao.create-proposal "test" "just for us" ["yes", "no"] (read-msg 'end))
 (commit-tx)
 
