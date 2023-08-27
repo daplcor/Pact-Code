@@ -25,6 +25,7 @@
     choices:[string]
     start:time
     end:time
+    completed:bool 
     votes:[object:{vote-schema}]
   )
 
@@ -51,6 +52,7 @@
         "choices": choices,
         "start": ct,
         "end": end,
+        "completed":false,
         "votes":[]
       }
     ;)
@@ -110,15 +112,29 @@
     )
   )
 
+  (defun close-vote:bool 
+    (proposalId:string)
+    @doc "Close the voting for a proposal"
+    (let* ((proposal (read proposals proposalId))
+           (ct (curr-time)))
+      (enforce (>= ct (at 'end proposal)) "Voting period has not yet ended")
+      
+      ; Need to work our tally logic into this flow
+  
+      ; Set completed flag to true
+      (update proposals proposalId {"completed": true})
+    )
+  )
+
   (defun update-tweet-id:bool
     (proposalId:string tweetId:string)
     (update proposals proposalId {"tweetId": tweetId})
   )
   
-;    (defun update-tally:bool
-;      (proposalId:string newTally:{string:integer})
-;      (update proposals proposalId {"votes": newTally})
-;    )
+  (defun update-tally:bool
+    (proposalId:string newTally:string)
+    (update proposals proposalId {"votes": newTally})
+  )
   
 
   (defun hash-id:string
