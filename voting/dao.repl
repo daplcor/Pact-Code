@@ -37,9 +37,9 @@
 (commit-tx)
 
 (begin-tx "Create Proposal")
-(free.dao.create-proposal "test" "just for us" ["yes", "no"] (read-msg 'end) 50)
+(free.dao.create-proposal "test" "just for us" "swarms" ["yes", "no"] (read-msg 'start) (read-msg 'end) true 50  [{"choice": "yes", "count": 50},{"choice": "no", "count": 20}] "tweettest")
 
-(free.dao.update-tweet-id "d:kosgNmlD4q_RHrwOri5TqTvxd6T881vMZNUDcE5l4gI" "jfiwefjwf84f4f48n4" )
+;  (free.dao.update-tweet-id "d:kosgNmlD4q_RHrwOri5TqTvxd6T881vMZNUDcE5l4gI" "jfiwefjwf84f4f48n4" )
 
 (commit-tx)
 
