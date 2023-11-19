@@ -1,9 +1,9 @@
-(namespace (read-msg 'ns))
+(namespace (read-string 'ns))
 
 (module util-v1 GOVERNANCE
   (use kip.token-policy-v2)
-  (use marmalade.policy-manager )
-  (use marmalade.policy-manager [CONCRETE_POLICY_LIST NON_FUNGIBLE_POLICY ROYALTY_POLICY COLLECTION_POLICY GUARD_POLICY])
+  (use policy-manager)
+  (use policy-manager [CONCRETE_POLICY_LIST NON_FUNGIBLE_POLICY ROYALTY_POLICY COLLECTION_POLICY GUARD_POLICY])
 
   (defschema concrete-policy-bool
     non-fungible-policy:bool
@@ -12,8 +12,10 @@
     guard-policy:bool
   )
 
+  (defconst GOVERNANCE-KS:string (+ (read-string 'ns) ".marmalade-admin"))
+
   (defcap GOVERNANCE ()
-    (enforce-guard (keyset-ref-guard 'marmalade-admin )))
+    (enforce-guard GOVERNANCE-KS))
 
   (defconst DEFAULT:object{concrete-policy-bool}
     { 'non-fungible-policy: true
@@ -66,5 +68,10 @@
      ,'collection-policy: (contains (get-concrete-policy COLLECTION_POLICY) policies)
      ,'guard-policy: (contains (get-concrete-policy GUARD_POLICY) policies)
     }
+  )
+
+  (defun to-timestamp:integer (input:time)
+    "Computes an Unix timestamp of the input date"
+    (floor (diff-time input (time "1970-01-01T00:00:00Z")))
   )
 )

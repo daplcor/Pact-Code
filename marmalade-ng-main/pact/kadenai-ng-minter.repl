@@ -1,0 +1,195 @@
+(env-data {"disable-marmalade":true})
+(load "../tests/kadena_repl_sandbox/kda-env/init.repl")
+(load "../tests/init/init-ledger.repl")
+(load "../tests/init/init-policy-collection.repl")
+
+(begin-tx)
+(load "../tests/tools/events_analyzer.pact")
+(commit-tx)
+
+
+(begin-tx)
+(namespace 'marmalade-ng)
+(load "../tests/stubs/policy-events-A.pact")
+(load "../tests/stubs/policy-events-B.pact")
+(commit-tx)
+(begin-tx "Load in the environment data")
+
+(env-keys ["ku-admin" "ku-ops" "creatorGuard"])
+(env-data
+  {
+    "ku-admin": {
+      "keys": [
+        "ku-admin"
+      ],
+      "pred": "keys-any"
+    },
+    "ku-ops": {
+      "keys": [
+        "ku-ops"
+      ],
+      "pred": "keys-any"
+    },
+    "ku-bank": {
+      "keys": [
+        "ku-bank"
+      ],
+      "pred": "keys-all"
+    },
+    "bank-guard": {
+      "keys": [
+        "ku-admin"
+      ],
+      "pred": "keys-all"
+    },
+    "creatorGuard": {
+        "keys": [ "creatorGuard" ],
+        "pred": "keys-any"
+      },
+
+  
+
+    "upgrade": false
+  }
+)
+(commit-tx)
+
+
+(begin-tx "test token-create-id")
+(use marmalade-ng.ledger)
+(env-data {'ks: {
+  "keys": [
+    "alice"
+  ],
+  "pred": "keys-all"
+}})
+(env-sigs [{'key:"alice", 'caps:[(ENFORCE-RESERVED)]}])
+
+(print (+ "Token-1: => " (create-token-id (read-keyset 'ks) "http://token-1" )))
+
+(env-events true)
+(create-token "t:mBTVT702FlLRN2Mew6dfirZepNfC-8o50veVAJro9GE" 1 "http://token-1"
+              [marmalade-ng.policy-events-A, marmalade-ng.policy-events-B] (read-keyset 'ks))
+
+(commit-tx)
+
+(begin-tx "begin test minting")
+(use marmalade-ng.ledger)
+(use free.util-lists)
+(env-sigs [
+{'key:"alice-key", 'caps:[(MINT "t:mBTVT702FlLRN2Mew6dfirZepNfC-8o50veVAJro9GE" "alice" 1.0)]}])
+
+(mint "t:mBTVT702FlLRN2Mew6dfirZepNfC-8o50veVAJro9GE" "alice" (read-keyset 'ks) 1.0)
+
+(expect "Balance of alice is 1.0" 1.0 (get-balance "t:mBTVT702FlLRN2Mew6dfirZepNfC-8o50veVAJro9GE" "alice"))
+(commit-tx)
+
+
+(begin-tx "Creator Collection")
+(use marmalade-ng.policy-collection)
+(env-sigs [{'key:"alice", 'caps:[]}])
+(print (+ "Collection ID: => "
+          (create-collection-id "Amir" (read-keyset 'ks))))
+(create-collection "c_Amir_HvRvsDQv1zCETomsGXj9PECrkZLuF_M2zSOsnUc6S_Q" "Amir" 0 (read-keyset 'ks))
+
+(commit-tx)
+;  (begin-tx)
+;  (env-keys ["ku-admin" "ku-ops" "creatorGuard"])
+
+;  (env-data
+;    {
+;      "ku-admin": {
+;        "keys": [
+;          "ku-admin"
+;        ],
+;        "pred": "keys-any"
+;      },
+;      "ku-ops": {
+;        "keys": [
+;          "ku-ops"
+;        ],
+;        "pred": "keys-any"
+;      }, "upgrade": false})
+;  (commit-tx)
+
+;  (begin-tx "Load Minter Test")
+
+;  (load "./kadenai-minter.pact")
+
+;  (commit-tx)
+
+;  (begin-tx "Load ledger")
+;  (use marmalade.ledger)
+;  (use marmalade.policy-manager)
+
+;  (env-data {
+;    "token-id": (create-token-id { 'uri: "test-uri", 'precision: 0, 'policies: util.DEFAULT_POLICIES } )
+;   ,"account": "account"
+;   ,"mint-guard": {"keys": ["account"], "pred": "keys-all"}
+;    })
+;    (commit-tx)
+
+;    (begin-tx "mint")
+;    (use marmalade.ledger)
+;  (use marmalade.policy-manager)
+;    (env-sigs [
+;      { 'key: 'bob
+;       ,'caps: [(marmalade.ledger.MINT (create-token-id { 'uri: "ipfs://howdydoda", 'precision: 0, 'policies: util.DEFAULT_POLICIES }) "bob" 1.0),
+;       (marmalade.non-fungible-policy-v1.MINT (create-token-id { 'uri: "ipfs://howdydoda", 'precision: 0, 'policies: util.DEFAULT_POLICIES }) )
+;      ]
+;       }])
+;       (env-data {
+;        "token-id": (create-token-id { 'uri: "ipfs://howdydoda", 'precision: 0, 'policies: util.DEFAULT_POLICIES } )
+;       ,"account": "bob"
+;       , "policies": util.DEFAULT_POLICIES 
+;       ,"nfp-mint-guard": {"keys": ["bob"], "pred": "keys-all"}
+;        })
+    
+;           (free.kadenai-minter.mint "bob" "ipfs://howdydoda" 0 util.DEFAULT_POLICIES )
+   
+;    (commit-tx)
+
+;    (begin-tx "mint2")
+;    (use marmalade.ledger)
+;  (use marmalade.policy-manager)
+;    (env-sigs [
+;      { 'key: 'bob
+;       ,'caps: [(marmalade.ledger.MINT (create-token-id { 'uri: "ipfs://howdydodad", 'precision: 0, 'policies: util.DEFAULT_POLICIES }) "bob" 1.0),
+;       (marmalade.non-fungible-policy-v1.MINT (create-token-id { 'uri: "ipfs://howdydodad", 'precision: 0, 'policies: util.DEFAULT_POLICIES }) )
+;      ]
+;       }])
+;       (env-data {
+;        "token-id": (create-token-id { 'uri: "ipfs://howdydodad", 'precision: 0, 'policies: util.DEFAULT_POLICIES } )
+;       ,"account": "bob"
+;       , "policies": util.DEFAULT_POLICIES 
+;       ,"nfp-mint-guard": {"keys": ["bob"], "pred": "keys-all"}
+;        })
+    
+;           (free.kadenai-minter.mint "bob" "ipfs://howdydodad" 0 util.DEFAULT_POLICIES )
+   
+;    (commit-tx)
+
+;    (begin-tx "mint3")
+;    (use marmalade.ledger)
+;  (use marmalade.policy-manager)
+;    (env-sigs [
+;      { 'key: 'alice
+;       ,'caps: [(marmalade.ledger.MINT (create-token-id { 'uri: "ipfs://howdydodads", 'precision: 0, 'policies: util.DEFAULT_POLICIES }) "alice" 1.0),
+;       (marmalade.non-fungible-policy-v1.MINT (create-token-id { 'uri: "ipfs://howdydodads", 'precision: 0, 'policies: util.DEFAULT_POLICIES }) )
+;      ]
+;       }])
+;       (env-data {
+;        "token-id": (create-token-id { 'uri: "ipfs://howdydodads", 'precision: 0, 'policies: util.DEFAULT_POLICIES } )
+;       ,"account": "alice"
+;       , "policies": util.DEFAULT_POLICIES 
+;       ,"nfp-mint-guard": {"keys": ["alice"], "pred": "keys-all"}
+;        })
+    
+;           (free.kadenai-minter.mint "alice" "ipfs://howdydodads" 0 util.DEFAULT_POLICIES )
+   
+;    (commit-tx)
+
+  ;  n_fa5008565e171dca599c6accfd71d6006ddecce0.util-v1
+
+  ;  "token-id": (n_fa5008565e171dca599c6accfd71d6006ddecce0.ledger.create-token-id { 'uri: "ipfs://bafyreibxvp7ii2alete6ek23tgnecw7jd5u6fdfpogqsrcajmszfou37je", 'precision: 0, 'policies: n_fa5008565e171dca599c6accfd71d6006ddecce0.util-v1.DEFAULT }),
+  ;  "account": "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce",

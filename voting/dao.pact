@@ -13,14 +13,15 @@
     (enforce-guard (keyset-ref-guard "free.ku-ops")))
 
 (defschema vote-schema
+    userId:stirng
     choice:string
     count:integer
     )
 
   (defschema proposal
     id:string
-    name:string
-    dao:string
+    question:string
+    daoName:string
     description:string
     tweetId:string
     choices:[string]
@@ -35,9 +36,9 @@
 
 (defun create-proposal 
     (
-        name:string 
+        question:string 
         description:string
-        dao:string 
+        daoName:string 
         choices:[string]
         start:time 
         end:time 
@@ -46,14 +47,14 @@
         votes:[object:{vote-schema}] 
         tweetId:string
         )
-    (let* ((id:string (hash-id name)))
+    (let* ((id:string (hash-id question)))
     (with-capability (OPS)
       (insert proposals id 
         {
         "id": id,
-        "name": name,
+        "name": question,
         "description": description,
-        "dao": dao,
+        "daoName": dao,
         "tweetId": "",
         "choices": choices,
         "start": start,
@@ -77,8 +78,8 @@
  
 
   (defun hash-id:string
-    (name:string)
-    (format "d:{}" [(hash name)]
+    (question:string)
+    (format "d:{}" [(hash question)]
     )
   )
 

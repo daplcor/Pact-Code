@@ -1,23 +1,23 @@
-(namespace (read-msg 'ns))
+(namespace (read-string 'ns))
 
 (module non-fungible-policy-v1 GOVERNANCE
 
-  @doc "Concrete policy for issuing an nft with a fixed supply of 1"
+  @doc "Concrete policy for issuing an nft with a fixed supply of 1 and precision of 0"
+
+  (defconst GOVERNANCE-KS:string (+ (read-string 'ns) ".marmalade-admin"))
 
   (defcap GOVERNANCE ()
-    (enforce-guard (keyset-ref-guard 'marmalade-admin )))
+    (enforce-guard GOVERNANCE-KS))
 
   (implements kip.token-policy-v2)
+  (use policy-manager)
   (use kip.token-policy-v2 [token-info])
-
-  (defun enforce-ledger:bool ()
-     (enforce-guard (marmalade.ledger.ledger-guard))
-  )
 
   (defun enforce-init:bool
     ( token:object{token-info}
     )
-    (enforce-ledger)
+    (require-capability (INIT-CALL (at "id" token) (at "precision" token) (at "uri" token) non-fungible-policy-v1))
+    (enforce (= 0 (at 'precision token)) "Precision must be 0")
     true
   )
 
@@ -27,7 +27,7 @@
       guard:guard
       amount:decimal
     )
-    (enforce-ledger)
+    (require-capability (MINT-CALL (at "id" token) account amount non-fungible-policy-v1))
     (enforce (= amount 1.0) "Mint can only be 1")
     (enforce (= (at 'supply token) 0.0) "Only one mint allowed")
   )
@@ -37,7 +37,6 @@
       account:string
       amount:decimal
     )
-    (enforce-ledger)
     (enforce false "Burn prohibited")
   )
 
@@ -45,10 +44,10 @@
     ( token:object{token-info}
       seller:string
       amount:decimal
+      timeout:integer
       sale-id:string
     )
-    @doc "Capture quote spec for SALE of TOKEN from message"
-    (enforce-ledger)
+    true
   )
 
   (defun enforce-buy:bool
@@ -58,7 +57,16 @@
       buyer-guard:guard
       amount:decimal
       sale-id:string )
-    (enforce-ledger)
+    true
+  )
+
+  (defun enforce-withdraw:bool
+    ( token:object{token-info}
+      seller:string
+      amount:decimal
+      timeout:integer
+      sale-id:string )
+    true
   )
 
   (defun enforce-transfer:bool
@@ -67,14 +75,7 @@
       guard:guard
       receiver:string
       amount:decimal )
-    (enforce-ledger)
+    true
   )
 
-  (defun enforce-withdraw:bool
-    ( token:object{token-info}
-      seller:string
-      amount:decimal
-      sale-id:string )
-    (enforce-ledger)
-  )
 )

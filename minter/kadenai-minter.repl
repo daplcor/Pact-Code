@@ -45,7 +45,8 @@
 (env-data
   { 'ns-admin-keyset: []
   , 'ns-genesis-keyset:[]
-  , 'ns-operate-keyset:[] })
+  , 'ns-operate-keyset:[],
+ })
 
 (env-exec-config ["DisablePact44"])
 (load "../marm-v2/marmalade/root/ns.pact")
@@ -70,7 +71,7 @@
  , 'ns: "marmalade"
  , 'upgrade: true })
 (load "../marm-v2/marmalade/policy-manager/policy-manager.pact")
-(load "../marm-v2/marmalade/ledger.pact")
+(load "../marm-v2/marmalade/ledger/ledger.pact")
 (commit-tx)
 
 (begin-tx "load concrete-polices")

@@ -77,7 +77,7 @@
 )
 
 (load "ku-create.pact")
-;  (load "ku-token-policy.pact")
+(load "ku-tk-policy.pact")
 (commit-tx)
 
 
@@ -177,13 +177,32 @@
 (free.ku-create.mint "test-collection" "alice" 1 ["bankAc","creator"])
 
 (expect-that "Amounts were transferred"
-  (= [950.0 50.0 1045.0])
+  (= [950.0 5.0 1045.0])
   [
     (coin.get-balance "alice")
     (coin.get-balance "BANK")
     (coin.get-balance "bob")
   ]
 )
-
 (commit-tx)
  
+(begin-tx "format nft")
+(env-data {
+  "alice": {
+    "keys": [
+      "alice-key"
+    ],
+    "pred": "keys-any"
+  }, 
+  "precision": 0,
+  "scheme": "ipfs://",
+  "data": "url",
+  "datum": {
+    "name": "Koala Kadena Tribe",
+    "description": "NFT Giveaway"
+  },
+  "policy": free.ku-tk-policy
+})
+(env-keys ["alice-key"])
+
+(commit-tx)
