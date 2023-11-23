@@ -111,8 +111,8 @@
       "creator": "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce",
       "provenance": "IPJ46HBWNS1Dh5sXcbIpuNFC6gSGs18bqrHUCB6GVzs",
       "creatorGuard": {
-        "keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"],
-        "pred": "keys-all"
+        "keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce", "2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"],
+        "pred": "keys-any"
       },
       "description": "test-description",
       "tiers": [
@@ -220,15 +220,15 @@
 (env-keys ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"])
 (env-data {
   "mg": {"keys": ["2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"], "pred": "keys-all"}
-  ,"creatorGuard":  {"keys": ["2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"], "pred": "keys-all"}
+  ,"creatorGuard":  {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce", "2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"], "pred": "keys-any"}
 
 })
 (env-sigs [{
   'key: "048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"
   ,"caps": [
-    (marmalade-v2.ledger.MINT "t:682FAXlGiAZT8dvHheOUtSmk4bfYIAVgaY4i0w_puQY" "k:2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652" 1.0)
+    (marmalade-v2.ledger.MINT "t:TIt-i8mycWEnIDPp_VBkXGP91Mv3_52yS6WEfIimNOk" "k:2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652" 1.0)
   , (free.kadenai-create-v2.WLCREATOR "test-collection")
-  , (marmalade-v2.ledger.CREATE-TOKEN "t:682FAXlGiAZT8dvHheOUtSmk4bfYIAVgaY4i0w_puQY" (read-keyset 'mg))
+  , (marmalade-v2.ledger.CREATE-TOKEN "t:TIt-i8mycWEnIDPp_VBkXGP91Mv3_52yS6WEfIimNOk" (read-keyset 'creatorGuard))
   ]
 }])
 (free.kadenai-create-v2.create-marmalade-token "k:2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652" "ipfs//test2" 0 "test-collection" 2 (marmalade-v2.util-v1.create-policies marmalade-v2.util-v1.DEFAULT))
@@ -245,24 +245,24 @@
 (env-keys ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"])
 (env-data {
   "mg": {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"], "pred": "keys-all"}
-  ,"creatorGuard":  {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"], "pred": "keys-all"}
+  ,"creatorGuard":  {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce", "2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"], "pred": "keys-any"}
 
 })
 (env-sigs [{
   'key: "048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"
   ,"caps": [
-    (marmalade-v2.ledger.MINT "t:RCICXPo_XsuHZqOCFvX6AdBIEsSkx2r-i4uTgftquc4" "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce" 1.0)
+    (marmalade-v2.ledger.MINT "t:Zyn7laBarBOvf1MEFoY2fhI_jpgqaY3lpB_BiJcYPBk" "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce" 1.0)
   , (free.kadenai-create-v2.WLCREATOR "test-collection")
-  , (marmalade-v2.ledger.CREATE-TOKEN "t:RCICXPo_XsuHZqOCFvX6AdBIEsSkx2r-i4uTgftquc4" (read-keyset 'mg))
+  , (marmalade-v2.ledger.CREATE-TOKEN "t:Zyn7laBarBOvf1MEFoY2fhI_jpgqaY3lpB_BiJcYPBk" (read-keyset 'creatorGuard))
   ]
 }])
 (free.kadenai-create-v2.create-marmalade-token "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce" "ipfs//test1" 0 "test-collection" 1 (marmalade-v2.util-v1.create-policies marmalade-v2.util-v1.DEFAULT))
 (commit-tx)
  
 
-(begin-tx "Gas Testing")
-  (env-gasmodel "table") (env-gaslimit 10000) (env-gas 0) (marmalade.ledger.get-all-account "k:2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652")  (env-gas)
-(commit-tx)
+;  (begin-tx "Gas Testing")
+;    (env-gasmodel "table") (env-gaslimit 10000) (env-gas 0) (marmalade.ledger.get-all-account "k:2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652")  (env-gas)
+;  (commit-tx)
 
 (begin-tx "Load ledger")
 (use marmalade-v2.ledger)
@@ -299,11 +299,10 @@
      (env-data {
       "token-id": "t:mVwtHPHVTmlt_tXcjaqJ2_LOVrhb6piSfYSuI3Trux0"
      ,"account": "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"
-     ,"creatorGuard": {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"], "pred": "keys-all"}
+     ,"creatorGuard":  {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce", "2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"], "pred": "keys-any"}
      , "collection_id": "collection:4rVIgEbsF1ocJnJxYJhv3vHmog5T8myKWYlqVb2PNK4"
      ,"alice-key": {"keys": ["alice-key"], "pred": "keys-all"}
      ,"mint-guard": {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"], "pred": "keys-all"}
-     ,"nfp-mint-guard": {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"], "pred": "keys-all"}
      ,"mg": {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"], "pred": "keys-all"}
      , "royalty_spec": {
       "fungible": coin
@@ -314,7 +313,7 @@
      , "collection-id": "collection:4rVIgEbsF1ocJnJxYJhv3vHmog5T8myKWYlqVb2PNK4"
       })
    
-      (marmalade-v2.ledger.create-token (read-msg 'token-id) 0 "ipfs://howdydoda/1"  (marmalade-v2.util-v1.create-policies marmalade-v2.util-v1.DEFAULT_COLLECTION_ROYALTY) (read-keyset 'mg) )
+      (marmalade-v2.ledger.create-token (read-msg 'token-id) 0 "ipfs://howdydoda/1"  (marmalade-v2.util-v1.create-policies marmalade-v2.util-v1.DEFAULT_COLLECTION_ROYALTY) (read-keyset 'creatorGuard) )
       (marmalade-v2.ledger.mint (read-msg 'token-id) "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce" (read-msg 'mg) 1.0) 
   (commit-tx)
 

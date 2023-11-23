@@ -177,6 +177,7 @@
           (collection-name:string (at "name" collection-data))
           (operator-account:string (at "creator" collection-data))
           (operator-guard:guard (at "creatorGuard" collection-data))
+          (col-owner:string (create-principal (at "creatorGuard" collection-data)))
           (collection-id:string (marmalade-v2.collection-policy-v1.create-collection-id collection-name operator-guard))
           (provenance:string (at "provenance" collection-data))
           (creator:string (at "creator" collection-data))
@@ -200,7 +201,7 @@
           collection-name
           collectionSize
           operator-guard
-          operator-account
+          col-owner
         )
         "Collection successfully created" 
 
@@ -339,8 +340,8 @@
     (defconst MINT_COMPLETED "mint-completed")
     (defconst MINT_STARTED "mint-started")
     (defconst Account_Exists "account-exists")
-    (defconst creator "creator")
-    (defconst creatorGuard "creatorGuard")
+    ;  (defconst creator "creator")
+    ;  (defconst creatorGuard "creatorGuard")
     (defconst description "description")
     (defconst fungible "fungible")
     (defconst totalSupply "totalSupply")
@@ -890,6 +891,10 @@
     @doc "Creates the user guard"
     (create-user-guard (require-SPLITTER))
   )
+
+(defun get-col-account ()
+ (create-principal (read-keyset 'creatorGuard))
+)
 
   (defun get-SPLITTER-account ()
     (create-principal (create-SPLITTER-guard))
