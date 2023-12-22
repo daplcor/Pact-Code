@@ -411,7 +411,6 @@
           , "limit":= mint-limit
           , "currencyType":= currencyType ; KDA or USD
           }
-          ;  (enforce (> cost 0.0) "Amount should be greater than 0.0")
 
           (let*
             (
