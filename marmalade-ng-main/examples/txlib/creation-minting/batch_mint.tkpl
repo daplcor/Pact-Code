@@ -21,9 +21,6 @@ code: |-
     ; Create tokens
     (zip (lambda (id uri) (create-token id 0 uri policies tmp-guard)) token-ids uris)
 
-    ; Install map capabilities
-    (map (lambda (id) (install-capability (MINT id receiver 1.0))) token-ids)
-
     ; Mint
     (map (lambda (id) (mint id receiver receiver-guard 1.0)) token-ids)
 
@@ -46,6 +43,7 @@ data:
     - DUTCH-AUCTION-SALE
     - AUCTION-SALE
     - MARKETPLACE
+    - EXTRA-POLICIES
 
   uris:
     - ipfs://bafybeih7zjcmnig2hka52qtdpgtmczqqrgcg2zahim33trxkb6hza2qkvy #1
@@ -73,6 +71,12 @@ data:
   marmalade_collection:
     id: {{collection-id}}
 
+  marmalade_extra_policies:
+    guard:
+      pred: keys-all
+      keys:
+        - {{creator-key}}
+
   marmalade_royalty:
     creator_acct: {{creator}}
     creator_guard:
@@ -80,6 +84,13 @@ data:
       keys:
         - {{creator-key}}
     rate: 0.1
+    currencies:
+      - refSpec:
+        - namespace: ~
+          name: fungible-v2
+        refName:
+          namespace: ~
+          name: coin
 publicMeta:
   chainId: "{{chain}}"
   sender: {{gas-payer}}

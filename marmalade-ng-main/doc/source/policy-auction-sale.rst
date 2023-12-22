@@ -9,8 +9,8 @@ Description
 This policy manages an auction sale:
   - The seller of the token puts its token on sale and propose a starting price and a multiplier increment.
   - People proposes bids:
-    - starting with at least the starting price
-    - then by bidding a price that it is at least the last price multiplied by the increment.
+     - starting with at least the starting price
+     - then by bidding a price that it is at least the last price multiplied by the increment.
 
 Since the `(place-bid)` function is executed out of the defpact context, a second escrow account must be used during
 the auctions. The funds from this second escrow account are then transferred to the main Marmalade escrow account before settlement.
@@ -32,8 +32,21 @@ to take a part of the funds from the escrow account.
 
 The seller is able to withdraw from the sale after the ``timeout`` has elapsed if nobody has placed a bid.
 
-
 This policy does not support the ``NO-TIMEOUT`` parameter.
+
+Timeout extension
+~~~~~~~~~~~~~~~~~
+To keep auctions fair and avoid sniping and malicious activity: the timeout can be extended.
+
+If a bid occurs less than 10 minutes before the end of the sale, the timeout is extended to 30 minutes after the bid time:
+
+Examples:
+  - The tiemout was previously set to: ``2023-01-03T06:00:00``, a bid arrives at ``2023-01-03T05:45:00`` => The tiemout is not changed.
+  - The tiemout was previously set to: ``2023-01-03T06:00:00``, a bid arrives at ``2023-01-03T05:56:00`` => The tiemout is extended to ``2023-01-03T06:06:00``.
+
+
+
+
 
 Implemented hooks
 ^^^^^^^^^^^^^^^^^
@@ -305,3 +318,32 @@ Return all ended sales:
      "token-id": "t:LWZdYIxjht_J_PCA4RrThTdjD9VDCvkWabnh8tKNST8"
     }
   ]
+
+Events
+^^^^^^
+AUCTION-SALE-OFFER
+~~~~~~~~~~~~~~~~~~
+sale-id* ``string`` *token-id* ``string`` *start-price* ``decimal``
+
+Event sent when an auction is started
+
+
+PLACE-BID
+~~~~~~~~~~~~~~~~
+*sale-id* ``string`` *token-id* ``string`` *buyer* ``string`` *price* ``decimal``
+
+Event emitted when a bid is placed for the sale.
+
+
+AUCTION-SALE-BOUGHT
+~~~~~~~~~~~~~~~~~~~
+sale-id* ``string`` *token-id* ``string`` *buy-price* ``decimal``
+
+Event sent when an auction has ended
+
+
+AUCTION-SALE-WITHDRAWN
+~~~~~~~~~~~~~~~~~~~~~~
+sale-id* ``string`` *token-id* ``string``
+
+Event sent when an auction has been withdrawn because there is no bid

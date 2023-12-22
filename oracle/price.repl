@@ -1,0 +1,36 @@
+;  (load "../kda-env/init.repl")
+
+(begin-tx "Load in the pay environment")
+
+(env-keys ["pay-oracle-admin" "pay-oracle-ops" ])
+(env-data
+  {
+    "pay-oracle-admin": {
+      "keys": [
+        "pay-oracle-admin"
+      ],
+      "pred": "keys-any"
+    },
+    "pay-oracle-ops": {
+      "keys": [
+        "pay-oracle-ops"
+      ],
+      "pred": "keys-any"
+    },
+ 
+     "upgrade": false
+     , "price": 0.7
+  }
+)
+
+(load "price.pact")
+(commit-tx)
+
+
+(begin-tx "Update KDA price")
+(free.pay-oracle.update-kda-usd-price (read-decimal "price"))
+(commit-tx)
+
+
+
+ 

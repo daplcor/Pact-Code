@@ -24,6 +24,7 @@
   (define-namespace 'util (sig-keyset) (sig-keyset))
   (load "./util/fungible-util.pact")
   (load "./util/guards1.pact")
+  (load "./util/guards.pact")
 (commit-tx)
 
 

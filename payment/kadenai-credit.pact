@@ -26,6 +26,7 @@
     (defschema payment-table
       id:string
       account:string
+      account-guard:guard
       cost:decimal
       name:string
       fungible:module{fungible-v2}
@@ -44,7 +45,7 @@
 
 
   
-      
+  
     ;; Functions
  (defun create-nft-with-payment (nftData:object fungible:module{fungible-v2} )
  (let* 

@@ -2,8 +2,7 @@
   (implements token-policy-ng-v1)
   (use token-policy-ng-v1 [token-info])
   (use util-policies)
-  (use free.util-math)
-
+  (use free.util-math [clamp])
 
   ;-----------------------------------------------------------------------------
   ; Governance
@@ -72,7 +71,7 @@
                     (<= min-fee max-fee)) "Illegal Min/Max fee")
 
       ; Is fee-rate is between 0.0 and 1.0 ?
-      (enforce (between 0.0 1.0 fee-rate) "Illegal fee rate")
+      (enforce-valid-rate fee-rate)
 
       ; Is the payment account OK ?
       (check-fungible-account currency account))
@@ -81,7 +80,8 @@
   ;-----------------------------------------------------------------------------
   ; Policy hooks
   ;-----------------------------------------------------------------------------
-  (defun rank:integer () 10)
+  (defun rank:integer ()
+    RANK-SELLER-FEE)
 
   (defun enforce-init:bool (token:object{token-info})
     true)

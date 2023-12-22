@@ -36,7 +36,7 @@ Load successful
 ## Description
 
 ### Pact
-Based on Pact 4.7.0, and currently on-chains contracts (06/05/2023)
+Based on Pact 4.9.0, and currently on-chains contracts (06/05/2023)
 
 ### Bootstrap modules
 
@@ -82,17 +82,26 @@ Contracts:
 - 3 default policy contracts in NS `marmalade`
 
 
+### Marmalade NG
+The current version of marmalade NG is installed:
+
+Contracts:
+  - poly-fungible-v3 intefaces in NS `kip`
+  - all others Marmalade NG contracts (ledger policies and utils) in `marmamalade-ng`
+
+
 ### Pact Util library
-The version 0.7 of unofficial Pact Util library:
+The version 0.8.1 of unofficial Pact Util library:
 - https://github.com/CryptoPascal31/pact-util-lib
-- https://pact-util-lib.readthedocs.io/en/beta_0.7/
+- https://pact-util-lib.readthedocs.io/en/beta_0.8.1/
 
 ### Disabling features (optional)
 If you don't need to load some features, you can disable them.
 Before loading `init.repl` just use an `(env-data {...})` command with the following parameters:
 
   - `disable-util-lib` => Do not load the Pact Util Library modules
-  - `disable-marmalade` => Do not load Marmalade modules
+  - `disable-marmalade-v1` => Do not load Marmalade modules
+  - `disable-marmalade-ng` => Do not load Marmalade NG modules
   - `disable-test-accounts` => Do not fund test accounts (Alice, Bob, ...)
 
   Examples:
@@ -105,6 +114,6 @@ Before loading `init.repl` just use an `(env-data {...})` command with the follo
   ```lisp
   ; Do not fund test account and do not load Marmalade
   (env-data {"disable-test-accounts":true,
-             "disable-marmalade":true})
+             "disable-marmalade-v1":true})
   (load "kda-env/init.repl")
   ```

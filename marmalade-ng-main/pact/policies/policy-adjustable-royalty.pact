@@ -2,7 +2,9 @@
   (implements token-policy-ng-v1)
   (use token-policy-ng-v1 [token-info])
   (use util-policies)
-  (use free.util-math)
+  (use free.util-math [pow10])
+  (use free.util-fungible [enforce-valid-account])
+  (use free.util-strings [to-string])
 
   ;-----------------------------------------------------------------------------
   ; Governance
@@ -21,6 +23,7 @@
     creator-account:string
     creator-guard:guard
     rate:decimal
+    currencies:[module{fungible-v2}]
   )
 
   (deftable royalty-tokens:{royalty-token-sch})
@@ -34,20 +37,27 @@
   (deftable royalty-sales:{royalty-sale-sch})
 
   ;-----------------------------------------------------------------------------
-  ; Events
+  ; Capabilities and events
   ;-----------------------------------------------------------------------------
   (defcap ROYALTY-PAID (token-id:string creator-account:string amount:decimal)
     @doc "Event emitted when a royalty is paid to a creator"
     @event
     true)
 
+  (defcap UPDATE-ROYALTY (token-id:string)
+    @doc "Capability to modify the royalty"
+    (with-read royalty-tokens token-id {'creator-guard:=current-guard}
+      (enforce-guard current-guard))
+  )
+
   ;-----------------------------------------------------------------------------
   ; Input data
   ;-----------------------------------------------------------------------------
   (defschema royalty-init-msg-sch
-    creator_acct:string
-    creator_guard:guard
-    rate:decimal
+    creator_acct:string ; Creator account: recipient of the royalty
+    creator_guard:guard ; Creator account: recipient of the royalty
+    rate:decimal ; Royalty rate
+    currencies:[module{fungible-v2}] ; List of currencies allowed for royalty payment
   )
 
   (defun read-royalty-init-msg:object{royalty-init-msg-sch} (token:object{token-info})
@@ -55,7 +65,7 @@
 
   ; -----------
   (defschema royalty-sale-msg-sch
-    maximum_royalty:decimal
+    maximum_royalty:decimal ; Maximum royalty for a sale
   )
 
   (defconst ROYALTY-SALE-MSG-DEFAULT:object{royalty-sale-msg-sch}
@@ -67,23 +77,27 @@
   ;-----------------------------------------------------------------------------
   ; Util functions
   ;-----------------------------------------------------------------------------
-  (defun validate-rate:bool (rate:decimal)
-    (enforce (between 0.0 1.0 rate) "Royalty rate must be between 0.0 and 1.0"))
+  (defun enforce-valid-fungibles:bool (currencies:[module{fungible-v2}])
+    (enforce (and? (< 0) (>= 20) (length currencies)) "Incorrect currencies list"))
 
   ;-----------------------------------------------------------------------------
   ; Policy hooks
   ;-----------------------------------------------------------------------------
-  (defun rank:integer () 20)
+  (defun rank:integer ()
+    RANK-ROYALTY)
 
   (defun enforce-init:bool (token:object{token-info})
     (require-capability (ledger.POLICY-ENFORCE-INIT token policy-adjustable-royalty))
     (let ((royalty-init-msg (read-royalty-init-msg token))
           (token-id (at 'id token)))
-      (bind royalty-init-msg {'creator_acct:=c-a, 'creator_guard:=c-g, 'rate:=rate}
-        (validate-rate rate)
+      (bind royalty-init-msg {'creator_acct:=c-a, 'creator_guard:=c-g, 'rate:=rate, 'currencies:=cur}
+        (enforce-valid-account c-a)
+        (enforce-valid-rate rate)
+        (enforce-valid-fungibles cur)
         (insert royalty-tokens token-id {'token-id:token-id,
                                          'creator-account:c-a,
                                          'creator-guard:c-g,
+                                         'currencies:cur,
                                          'rate:rate})))
     true
    )
@@ -99,16 +113,26 @@
 
   (defun enforce-sale-offer:bool (token:object{token-info} seller:string amount:decimal timeout:time)
     (require-capability (ledger.POLICY-ENFORCE-OFFER token (pact-id) policy-adjustable-royalty))
-    (let ((sale-msg (enforce-read-sale-msg token))
-          (royalty-msg (read-royalty-sale-msg token)))
 
-      (with-read royalty-tokens (at 'id token) {'rate:=rate}
-        ; Check that the creator did'n change the royalty just before the sale has been submitted
-        (enforce (<= rate (at 'maximum_royalty royalty-msg)) "Royalty is higher than expected")
+    ; Read the fungible currency from the sale message
+    (bind (enforce-read-sale-msg token) {'currency:=currency}
+      ; Read the maximum-royalty rate from the sale message
+      (bind (read-royalty-sale-msg token) {'maximum_royalty:=maximum-royalty}
+        ; Fetch from the database the allowed currencies and the rate for this token
+        (with-read royalty-tokens (at 'id token) {'currencies:=allowed-currencies, 'rate:=rate}
 
-        ; Copy the rate into the sale to fix it
-        (insert royalty-sales (pact-id) {'currency: (at 'currency sale-msg),
-                                         'sale-rate: rate})))
+          ; Check that the creator did'n change the royalty just before the sale has been submitted
+          (enforce (<= rate maximum-royalty) "Royalty is higher than expected")
+
+          ; Check that the requested currency is in the allowed currencies list
+          ; Because of https://github.com/kadena-io/pact/issues/1307
+          ;   until this one will be fixed, we have to compare by stringified versions
+          (enforce (contains (to-string currency) (map (to-string) allowed-currencies))
+                   "Currency is not allowed")
+
+          ; Copy the rate into the sale to freeze it
+          (insert royalty-sales (pact-id) {'currency: currency,
+                                           'sale-rate: rate}))))
     false ; We always return false because the royalty policy does not handle a sale
   )
 
@@ -150,20 +174,25 @@
   ;-----------------------------------------------------------------------------
   (defun rotate:string (token-id:string creator-account:string creator-guard:guard)
     @doc "Change/rotate the creator-account/creator-guard of the given tokenID"
-    (with-read royalty-tokens token-id {'creator-guard:=current-guard}
-      (enforce-guard current-guard))
-    (update royalty-tokens token-id {'creator-account:creator-account,
-                                     'creator-guard:creator-guard})
+    (enforce-valid-account creator-account)
+    (with-capability (UPDATE-ROYALTY token-id)
+      (update royalty-tokens token-id {'creator-account:creator-account,
+                                       'creator-guard:creator-guard}))
   )
 
   (defun update-rate:string (token-id:string new-rate:decimal)
     @doc "Change the royalty rate for the given tokenID"
-    (with-read royalty-tokens token-id {'creator-guard:=current-guard}
-      (enforce-guard current-guard))
-    (validate-rate new-rate)
-    (update royalty-tokens token-id {'rate:new-rate})
+    (enforce-valid-rate new-rate)
+    (with-capability (UPDATE-ROYALTY token-id)
+      (update royalty-tokens token-id {'rate:new-rate}))
   )
 
+  (defun update-allowed-currencies:string (token-id:string currencies:[module{fungible-v2}])
+    @doc "Change the list of allowed currencies"
+    (enforce-valid-fungibles currencies)
+    (with-capability (UPDATE-ROYALTY token-id)
+      (update royalty-tokens token-id {'currencies:currencies}))
+  )
 
   ;-----------------------------------------------------------------------------
   ; View functions
@@ -171,6 +200,11 @@
   (defun get-royalty-details:object{royalty-token-sch} (token-id:string)
     @doc "Return the details of the royalty spec for a token-id"
     (read royalty-tokens token-id))
+
+  (defun get-sale-rate:decimal (sale-id:string)
+    @doc "Return the royalty rate for a given sale"
+    (with-read royalty-sales sale-id {'sale-rate:=rate}
+      rate))
 
   ;-----------------------------------------------------------------------------
   ; View functions (local only)

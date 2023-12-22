@@ -3,7 +3,7 @@
   (use token-policy-ng-v1 [token-info])
   (use util-policies)
   (use ledger [NO-TIMEOUT create-account account-exist account-guard])
-  (use free.util-time [is-past is-future])
+  (use free.util-time [now is-past is-future])
 
   ;-----------------------------------------------------------------------------
   ; Governance
@@ -15,10 +15,32 @@
   ;-----------------------------------------------------------------------------
   ; Capabilities and events
   ;-----------------------------------------------------------------------------
-  (defcap PLACE-BID (sale-id:string buyer:string price:decimal)
+  (defcap AUCTION-SALE-OFFER (sale-id:string token-id:string start-price:decimal)
+    @doc "Event sent when an auction is started"
+    @event
+    true)
+
+  (defcap PLACE-BID (sale-id:string token-id:string buyer:string price:decimal)
     @doc "Event emitted after an external bid"
     @event
     true)
+
+  (defcap AUCTION-SALE-BOUGHT (sale-id:string token-id:string buy-price:decimal)
+    @doc "Event sent when an auction has ended"
+    @event
+    true)
+
+  (defcap AUCTION-SALE-WITHDRAWN (sale-id:string token-id:string)
+    @doc "Event sent when an auction has been withdrawn because there is no bid"
+    @event
+    true)
+
+  ;-----------------------------------------------------------------------------
+  ; Input data
+  ;-----------------------------------------------------------------------------
+  (defconst EXTENSION-LIMIT:decimal (minutes 10))
+
+  (defconst EXTENSION-TIME:decimal (minutes 10))
 
   ;-----------------------------------------------------------------------------
   ; Schemas and Tables
@@ -97,10 +119,6 @@
     (let ((ended (sale-ended)))
       (enforce ended "Sale not ended")))
 
-  (defun enforce-sale-not-ended:bool ()
-    (let ((not-ended (sale-not-ended)))
-      (enforce not-ended "Sale not ended")))
-
   (defun check-ledger-account:bool (token-id:string account:string guard:guard)
     @doc "Check an account on the Marmalade legder \
         \   - If it already exist, check that the guard does match \
@@ -114,7 +132,8 @@
   ;-----------------------------------------------------------------------------
   ; Policy hooks
   ;-----------------------------------------------------------------------------
-  (defun rank:integer () 30)
+  (defun rank:integer ()
+    RANK-SALE)
 
   (defun enforce-init:bool (token:object{token-info})
     true)
@@ -145,21 +164,24 @@
           ; Check that the recipient account is valid and already exists in the currency
           (check-fungible-account currency recipient)
 
-          ; Insert the quote into the DB.
-          (insert auctions (pact-id) {'sale-id: (pact-id),
-                                      'token-id: (at 'id token),
-                                      'seller: seller,
-                                      'amount: amount,
-                                      'escrow-account: (auction-escrow (pact-id)),
-                                      'currency: currency,
-                                      'start-price: start-price,
-                                      'current-price: 0.0,
-                                      'increment-ratio: increment-ratio,
-                                      'current-buyer:"",
-                                      'recipient: recipient,
-                                      'timeout: timeout,
-                                      'enabled: true})
-            true)
+
+          (bind token {'id:=token-id}
+            ; Insert the quote into the DB
+            (insert auctions (pact-id) {'sale-id: (pact-id),
+                                        'token-id: token-id,
+                                        'seller: seller,
+                                        'amount: amount,
+                                        'escrow-account: (auction-escrow (pact-id)),
+                                        'currency: currency,
+                                        'start-price: start-price,
+                                        'current-price: 0.0,
+                                        'increment-ratio: increment-ratio,
+                                        'current-buyer:"",
+                                        'recipient: recipient,
+                                        'timeout: timeout,
+                                        'enabled: true})
+            ; Emit event always returns true
+            (emit-event (AUCTION-SALE-OFFER (pact-id) token-id start-price))))
         false))
   )
 
@@ -173,7 +195,7 @@
       (enforce (= current-buyer "") "Bid active"))
     ; Disable the sale
     (update auctions (pact-id) {'enabled: false})
-    true
+    (emit-event (AUCTION-SALE-WITHDRAWN (pact-id) (at 'id token)))
   )
 
   (defun enforce-sale-withdraw:bool (token:object{token-info})
@@ -187,7 +209,7 @@
     (enforce-sale-ended)
     (with-read auctions (pact-id) {'token-id:=token-id,
                                    'currency:=currency:module{fungible-v2},
-                                   'current-price:=current-price,
+                                   'current-price:=buy-price,
                                    'current-buyer:=current-buyer}
 
       ; Check that the buyer is different from EMPTY. It means that someone has placed a bid
@@ -199,9 +221,10 @@
 
       ; Transfer the funds from the "Auction escrow account" -> "Sale escrow account"
       (with-capability (AUCTION-ESCROW-ACCOUNT (pact-id))
-        (install-capability (currency::TRANSFER (auction-escrow (pact-id)) (ledger.escrow) current-price))
-        (currency::transfer-create (auction-escrow (pact-id)) (ledger.escrow) (ledger.escrow-guard) current-price))
-      true)
+        (install-capability (currency::TRANSFER (auction-escrow (pact-id)) (ledger.escrow) buy-price))
+        (currency::transfer-create (auction-escrow (pact-id)) (ledger.escrow) (ledger.escrow-guard) buy-price))
+      ; Emit the event
+      (emit-event (AUCTION-SALE-BOUGHT (pact-id) token-id buy-price)))
   )
 
   (defun enforce-sale-buy:bool (token:object{token-info} buyer:string)
@@ -211,8 +234,8 @@
 
   (defun --enforce-sale-settle:bool (token:object{token-info})
     (require-capability (ledger.POLICY-ENFORCE-SETTLE token (pact-id) policy-auction-sale))
-    ; The settle handler is called in the same transaction as the handler buy
-    ; => Checking the timeout is not necessary
+    ; The (enforce-settle) handler is called in the same transaction
+    ; as the (enforce-buy) handler
     ; Transfer the remaining from the escrow account to the recipient
     (with-read auctions (pact-id) {'currency:=currency:module{fungible-v2},
                                    'recipient:=recipient}
@@ -247,19 +270,19 @@
                                  'timeout:=timeout,
                                  'enabled:=enabled}
 
-      (enforce enabled "Sale not active")
+      (enforce enabled "Sale disabled")
       (enforce (is-future timeout) "Sale has ended")
       (currency::enforce-unit new-price)
 
-      ; Check that the proposed price is correct
-      ;   - If it is the first bid, it must at least the staring price
+      ; Check that the proposed price is correct:
+      ;   - If it is the first bid, it must be at least the starting price
       ;   - If not is should be at least more than previous_bid * increment-ratio
       (enforce (if (= 0.0 current-price)
                    (>= new-price start-price)
                    (>= new-price (* current-price increment-ratio)))
                "Price too low")
 
-      ; The best way to ensure that everything will work at expected during
+      ; The best way to ensure that everything will work as expected during
       ; settlement is to check that current ledger account already exists  with the declared
       ; guard or create-it. This prevents most risks of being front-runned, account squatting with
       ; token stolen.
@@ -274,11 +297,22 @@
             (install-capability (currency::TRANSFER (auction-escrow sale-id) current-buyer current-price))
             (currency::transfer (auction-escrow sale-id) current-buyer current-price))
           "")
-    ; Update the database with the new buyer and new price
-    (update auctions sale-id {'current-price:new-price, 'current-buyer:buyer})
+
+    ; Compute the new timeout
+    ; extension-timeout is the time where a bid must trigger a time extension
+    ; if the time extension is triggered, we calculate the new timeout by adding
+    ;   EXTENSION-TIME to the current time
+    (let* ((extension-timeout (add-time timeout (- EXTENSION-LIMIT)))
+           (new-timeout (if (is-past extension-timeout)
+                            (add-time (now) EXTENSION-TIME)
+                            timeout)))
+      ; Update the database with the new buyer and new price,
+      ;  and extended timeout if necessary
+      (update auctions sale-id {'current-price:new-price, 'current-buyer:buyer,
+                                'timeout: new-timeout}))
 
     ; Emit the event
-    (emit-event (PLACE-BID sale-id buyer new-price))
+    (emit-event (PLACE-BID sale-id token-id buyer new-price))
     ; Return a nice looking string
     (+ "Bid placed for sale: " sale-id))
   )

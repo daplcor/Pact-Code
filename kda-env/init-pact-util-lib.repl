@@ -4,6 +4,8 @@
 (load "pact-util-lib/util-strings.pact")
 (load "pact-util-lib/util-math.pact")
 (load "pact-util-lib/util-random.pact")
+(load "pact-util-lib/util-time.pact")
+
 
 (create-table state-table)
 

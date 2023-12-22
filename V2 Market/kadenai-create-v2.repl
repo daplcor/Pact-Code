@@ -1,55 +1,5 @@
 (load "./v2/marmalade.repl")
-
-
-(begin-tx)
-(env-data
-  { 'ns-admin-keyset: []
-  , 'ns-genesis-keyset:[]
-  , 'ns-operate-keyset:[] })
-(env-exec-config ["DisablePact44"])
-;  (load "./v2/root/ns.pact")
-(commit-tx)
-
-(begin-tx)
-(env-data
- { 'marmalade-admin: ["marmalade-admin"]
- , 'marmalade-ns-user: ["marmalade-admin"]
- , 'marmalade-ns-admin: ["marmalade-admin"]
- , 'ns: "marmalade"
- , 'upgrade: false })
- (env-sigs [
-   { 'key: 'marmalade-admin
-    ,'caps: []
-    }])
-;  (load "../marm-v2/marmalade/ns-marmalade.pact")
-(env-data
- { 'marmalade-admin: ["marmalade-admin"]
- , 'marmalade-ns-user: ["marmalade-admin"]
- , 'marmalade-ns-admin: ["marmalade-admin"]
- , 'ns: "marmalade"
- , 'upgrade: false })
-
-;  (load "../marm-v2/marmalade/marmalade-util/util-v1.pact")
-(commit-tx)
-
-(begin-tx "load concrete-polices")
-;  (load "../marm-v2/marmalade/concrete-policies/non-fungible-policy/non-fungible-policy-v1.pact")
-;  (load "../marm-v2/marmalade/concrete-policies/royalty-policy/royalty-policy-v1.pact")
-;  (load "../marm-v2/marmalade/concrete-policies/collection-policy/collection-policy-v1.pact")
-;  (load "../marm-v2/marmalade/concrete-policies/guard-policy/guard-policy-v1.pact")
-
-;  (use kip.token-policy-v2 [NON_FUNGIBLE_POLICY GUARD_POLICY ROYALTY_POLICY COLLECTION_POLICY])
-;  (marmalade.policy-manager.init (marmalade.ledger.ledger-guard))
-;  (use marmalade.policy-manager [NON_FUNGIBLE_POLICY ROYALTY_POLICY COLLECTION_POLICY GUARD_POLICY])
-;  (marmalade.policy-manager.init (marmalade.ledger.ledger-guard))
-;  (marmalade.quote-manager.init (marmalade.policy-manager.policy-manager-guard))
-
-;  (marmalade.policy-manager.write-concrete-policy NON_FUNGIBLE_POLICY marmalade.non-fungible-policy-v1)
-;    (marmalade.policy-manager.write-concrete-policy ROYALTY_POLICY marmalade.royalty-policy-v1)
-;    (marmalade.policy-manager.write-concrete-policy COLLECTION_POLICY marmalade.collection-policy-v1)
-;    (marmalade.policy-manager.write-concrete-policy GUARD_POLICY marmalade.guard-policy-v1)
-
-(commit-tx)
+(load "../oracle/price.repl")
 
 (begin-tx "create collection")
 
@@ -80,36 +30,9 @@
       ],
       "pred": "keys-all"
     },
-    "creatorGuard": {
-        "keys": [ "048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce" ],
-        "pred": "keys-all"
-      },
-      ;  "tokens": [
-      ;    "b7NtuI31vzDOswYTO4Bce1ZYuAPnkZkKrA70ijUrFOc",
-      ;    "xuj5sc-cG6psRv2XFADyY440k3DvOEKM9Ex9MzTjMJU",
-      ;    "VPkB4h_fRpGob_vq5Y5QyxAS9moK_TdTMJqr4L7kzp0",
-      ;    "RNhq8SNX_CjShYNMA9qCJc4Cpwm7L9M74roMdvf2x7o",
-      ;    "vV9aH_kffmoAZzWnHXzEtK4MKwYxltzkJHUI8v_k4DI",
-      ;    "HHQ9J4FMXY1kxEz5OMPT3gGgEvskwtMHxCiruh5bUU8",
-      ;    "xy4LicsyGwG7b5ei2ZvYq38kJ0HtHw4GG838uCysKoY",
-      ;    "uTApseZiG0zg-Pg3qMICnVZuxIzgk3Jhpus7YdgkBuY",
-      ;    "4LknmvOWrG9XVs-jBRIU6zwa3JCx-XuNJPUJGCQ25J4",
-      ;    "c1B-xYi8t30s9JqufGDWKY_l1Ah3aj6xGwSVKEk9GMw"
-      ;  ],
-      ;  "tokens": [
-      ;    "t:8-MkQgwqJ0j5nxpkRs0YYZkRmYZhCN1awxve4i7SuxU",
-      ;    "t:QS5-JZvA2ZbKa4hesCtsMeV_ak3sEUWZFpr-3svlVcE",
-      ;    "t:WB0WneAuhXftRLzNFvRFaW-M4JNIoh-wU1IvLMZMjz0"
-      ;    ],
-      "tokens": ["t:mOKmJuy84oxnOkgQyLqikXMTRiC0tr03CtwqxhMbStY",
-      "t:RlRzTnf2chXGLnKO88IBAvkFRc0PQ9EjBymKyzihs7Y",
-      "t:QG9tcj0tlUu9-hatkhefXOeJlA-U-s9iwjoaUxmOUk4"
-      ],
       "collection": {
       "name": "test-collection",
-      ;  "totalSupply": 3,
       "creator": "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce",
-      "provenance": "IPJ46HBWNS1Dh5sXcbIpuNFC6gSGs18bqrHUCB6GVzs",
       "creatorGuard": {
         "keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce", "2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"],
         "pred": "keys-any"
@@ -117,37 +40,34 @@
       "description": "test-description",
       "tiers": [
          {
-          "tierId": "public",
+          "tierId": "tier0",
           "tierType": "PUBLIC",
           "startTime": {"time": "2023-01-03T20:00:00Z"},
           "endTime": {"time": "2024-01-03T00:00:00Z"},
           "cost": 50.0,
-          "limit": -1.0
+          "limit": -1,
+          "currencyType": "USD"
+        },
+        {
+          "tierId": "tier1",
+          "tierType": "WL",
+          "startTime": {"time": "2024-01-04T00:00:01Z"},
+          "endTime": {"time": "2024-01-09T00:00:00Z"},
+          "cost": 0.0,
+          "limit": 2,
+          "currencyType": "KDA"
+        },
+        {
+          "tierId": "tier2",
+          "tierType": "PUBLIC",
+          "startTime": {"time": "2024-01-10T00:00:00Z"},
+          "endTime": {"time": "2024-01-11T00:00:00Z"},
+          "cost": 5.0,
+          "limit": 2,
+          "currencyType": "KDA"
         }
       ]
     },
-    "collection-name": "test-collection",
-    "tier-data": [
-      {
-        "tierId": "free",
-        "accounts": ["bob"]
-      },
-      {
-        "tierId": "discount",
-        "accounts": ["bob", "alice"]
-      }
-    ],
-    "royalty_spec": {
-      "fungible": coin
-     ,"creator": "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"
-     ,"creator-guard":  {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"], "pred": "keys-all"}
-     ,"royalty-rate": 0.05
-    },
-    "can-offer": true,
-    "can-buy": true,
-    "can-transfer": true,
-    "can-burn": true,
-    "can-xchain": true,
     "upgrade": false
   }
 )
@@ -155,16 +75,16 @@
 (env-keys ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"])
 
 
-(env-gasmodel "table") (env-gaslimit 150000) (env-gas 0) 
-(free.kadenai-create-v2.create-collection (read-msg 'collection) 3 coin)  
+(env-gasmodel "table") (env-gaslimit 1500000) (env-gas 0) 
+(free.kadenai-create-v2.create-collection (read-msg 'collection) 10 coin)  
 (env-gas)
 
 (commit-tx)
 
 (begin-tx "Add Bank Account")
 (env-keys ["ku-ops"])
-(coin.create-account "BANK" (read-keyset "ku-bank"))
-(free.kadenai-create-v2.update-bank "BANK" "BANK")
+(coin.create-account "KAIBANK" (read-keyset "ku-bank"))
+(free.kadenai-create-v2.update-bank "BANK" "KAIBANK")
  (commit-tx)
 
 
@@ -175,17 +95,17 @@
 [{
   "key": "048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce",
   "caps": [
-      (coin.TRANSFER "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce" (free.kadenai-create-v2.get-SPLITTER-account) 50.0)
+      (coin.TRANSFER "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce" (free.kadenai-create-v2.get-SPLITTER-account) 150.0)
   ]
 }])
 
-(free.kadenai-create-v2.mint "test-collection" "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce" 1 ["bankAc","creator"])
+(free.kadenai-create-v2.reserve-mint "test-collection" "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce" 1)
 ;  (env-gas "table")
 (expect-that "Amounts were transferred"
   (= [995.0 5.0 1045.0])
   [
     (coin.get-balance "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce")
-    (coin.get-balance "BANK")
+    (coin.get-balance "KAIBANK")
     (coin.get-balance "bob")
   ]
 )
@@ -199,123 +119,87 @@
 [{
   "key": "2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652",
   "caps": [
-      (coin.TRANSFER "k:2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652" (free.kadenai-create-v2.get-SPLITTER-account) 50.0)
+      (coin.TRANSFER "k:2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652" (free.kadenai-create-v2.get-SPLITTER-account) 80.0)
   ]
 }])
-
-(free.kadenai-create-v2.mint "test-collection" "k:2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652" 1 ["bankAc","creator"])
+; Mint price of 50.0
+(free.kadenai-create-v2.reserve-mint "test-collection" "k:2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652" 1)
 ;  (env-gas "table")
 (expect-that "Amounts were transferred"
   (= [995.0 5.0 1045.0])
   [
     (coin.get-balance "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce")
-    (coin.get-balance "BANK")
-    (coin.get-balance "bob")
+    (coin.get-balance "KAIBANK")
+    (coin.get-balance "k:2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652")
   ]
 )
 
 (commit-tx)
+
 
 (begin-tx "Create Marmalade Token for 2cd")
 (env-keys ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"])
 (env-data {
   "mg": {"keys": ["2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"], "pred": "keys-all"}
   ,"creatorGuard":  {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce", "2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"], "pred": "keys-any"}
-
+, "collection_id": "collection:oqjdizj3K-xjeEyYytBfqwjm4O7xtYT7UnjiBhJjv_s"
 })
 (env-sigs [{
   'key: "048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"
   ,"caps": [
-    (marmalade-v2.ledger.MINT "t:TIt-i8mycWEnIDPp_VBkXGP91Mv3_52yS6WEfIimNOk" "k:2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652" 1.0)
-  , (free.kadenai-create-v2.WLCREATOR "test-collection")
-  , (marmalade-v2.ledger.CREATE-TOKEN "t:TIt-i8mycWEnIDPp_VBkXGP91Mv3_52yS6WEfIimNOk" (read-keyset 'creatorGuard))
+    (marmalade-v2.ledger.MINT "t:2Set0w8pRLFPB5Yv2bvNWUtZTtjDOY8Uwfaw6FzPIUU" "k:2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652" 1.0)
+  , (free.kadenai-create-v2.MINTPROCESS "test-collection")
+  , (marmalade-v2.ledger.CREATE-TOKEN "t:2Set0w8pRLFPB5Yv2bvNWUtZTtjDOY8Uwfaw6FzPIUU" (read-keyset 'creatorGuard))
   ]
 }])
-(free.kadenai-create-v2.create-marmalade-token "k:2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652" "ipfs//test2" 0 "test-collection" 2 (marmalade-v2.util-v1.create-policies marmalade-v2.util-v1.DEFAULT))
+(free.kadenai-create-v2.create-marmalade-token "ipfs//test2" 0 "test-collection" 2 (marmalade-v2.util-v1.create-policies marmalade-v2.util-v1.DEFAULT_COLLECTION))
 (commit-tx)
-
-
-
-
-
-
-
 
 (begin-tx "Create Marmalade Token")
 (env-keys ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"])
 (env-data {
   "mg": {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"], "pred": "keys-all"}
   ,"creatorGuard":  {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce", "2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"], "pred": "keys-any"}
-
+  ,"newkeys":  {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce", "bob-key"], "pred": "keys-any"}
+,"collection_id": "collection:oqjdizj3K-xjeEyYytBfqwjm4O7xtYT7UnjiBhJjv_s"
 })
 (env-sigs [{
   'key: "048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"
   ,"caps": [
-    (marmalade-v2.ledger.MINT "t:Zyn7laBarBOvf1MEFoY2fhI_jpgqaY3lpB_BiJcYPBk" "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce" 1.0)
-  , (free.kadenai-create-v2.WLCREATOR "test-collection")
-  , (marmalade-v2.ledger.CREATE-TOKEN "t:Zyn7laBarBOvf1MEFoY2fhI_jpgqaY3lpB_BiJcYPBk" (read-keyset 'creatorGuard))
+    (marmalade-v2.ledger.MINT "t:pqMLRltXo7Lfqo4O4atKRqNuROhbrwwfpKCfPVvjsGs" "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce" 1.0)
+  , (free.kadenai-create-v2.MINTPROCESS "test-collection")
+  , (marmalade-v2.ledger.CREATE-TOKEN "t:pqMLRltXo7Lfqo4O4atKRqNuROhbrwwfpKCfPVvjsGs" (read-keyset 'creatorGuard))
   ]
 }])
-(free.kadenai-create-v2.create-marmalade-token "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce" "ipfs//test1" 0 "test-collection" 1 (marmalade-v2.util-v1.create-policies marmalade-v2.util-v1.DEFAULT))
+(free.kadenai-create-v2.create-marmalade-token  "ipfs//test1" 0 "test-collection" 1 (marmalade-v2.util-v1.create-policies marmalade-v2.util-v1.DEFAULT_COLLECTION))
 (commit-tx)
  
 
-;  (begin-tx "Gas Testing")
-;    (env-gasmodel "table") (env-gaslimit 10000) (env-gas 0) (marmalade.ledger.get-all-account "k:2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652")  (env-gas)
-;  (commit-tx)
+(begin-tx "Gas Testing")
+(env-gasmodel "table") (env-gaslimit 1500000) (env-gas 0) 
+(free.kadenai-create-v2.get-unrevealed-tokens-for-collection "test-collection")
+(env-gas)
+(commit-tx)
 
-(begin-tx "Load ledger")
-(use marmalade-v2.ledger)
-(use marmalade-v2.policy-manager)
-(env-data {
-  "ks": {"keys":["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"], "pred":"keys-all"} 
-})
-(env-data {
-  "token-id":   "t:mVwtHPHVTmlt_tXcjaqJ2_LOVrhb6piSfYSuI3Trux0" 
- ,"account": "account"
- ,"creatorGuard":  {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"], "pred": "keys-all"}
 
- ,"mint-guard": {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"], "pred": "keys-all"}
- , "collection-id": "test-collection" 
-  })
-  (commit-tx)
-  (begin-tx "mint")
-  (use marmalade-v2.ledger)
-(use marmalade-v2.policy-manager)
-(env-keys ["creatorGuard", "048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"])
-(env-data {
-  "mg": {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"], "pred": "keys-all"}
-  ,"creatorGuard":  {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"], "pred": "keys-all"}
+(begin-tx "add to whitelist")
+(env-keys ["ku-ops"])
+(free.kadenai-create-v2.add-whitelist-to-collection "test-collection" [{"tierId":"tier1", "accounts":["alice"]}])
+(free.kadenai-create-v2.get-wl-collection)
 
-})
-  (env-sigs [
-    { 'key: "048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"
-     ,'caps: [(marmalade-v2.ledger.MINT "t:mVwtHPHVTmlt_tXcjaqJ2_LOVrhb6piSfYSuI3Trux0" "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce" 1.0),
-     (marmalade-v2.ledger.CREATE-TOKEN "t:mVwtHPHVTmlt_tXcjaqJ2_LOVrhb6piSfYSuI3Trux0" (read-keyset 'mg)),
+(commit-tx)
 
-    (marmalade-v2.collection-policy-v1.TOKEN-COLLECTION "collection:4rVIgEbsF1ocJnJxYJhv3vHmog5T8myKWYlqVb2PNK4" "t:mVwtHPHVTmlt_tXcjaqJ2_LOVrhb6piSfYSuI3Trux0")
-    ]
-     }])
-     (env-data {
-      "token-id": "t:mVwtHPHVTmlt_tXcjaqJ2_LOVrhb6piSfYSuI3Trux0"
-     ,"account": "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"
-     ,"creatorGuard":  {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce", "2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"], "pred": "keys-any"}
-     , "collection_id": "collection:4rVIgEbsF1ocJnJxYJhv3vHmog5T8myKWYlqVb2PNK4"
-     ,"alice-key": {"keys": ["alice-key"], "pred": "keys-all"}
-     ,"mint-guard": {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"], "pred": "keys-all"}
-     ,"mg": {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"], "pred": "keys-all"}
-     , "royalty_spec": {
-      "fungible": coin
-     ,"creator": "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"
-     ,"creator-guard": {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"], "pred": "keys-all"}
-     ,"royalty-rate": 0.05
-    }
-     , "collection-id": "collection:4rVIgEbsF1ocJnJxYJhv3vHmog5T8myKWYlqVb2PNK4"
-      })
-   
-      (marmalade-v2.ledger.create-token (read-msg 'token-id) 0 "ipfs://howdydoda/1"  (marmalade-v2.util-v1.create-policies marmalade-v2.util-v1.DEFAULT_COLLECTION_ROYALTY) (read-keyset 'creatorGuard) )
-      (marmalade-v2.ledger.mint (read-msg 'token-id) "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce" (read-msg 'mg) 1.0) 
-  (commit-tx)
+(begin-tx "Free Mint")
+(env-keys ["alice-key"])
+(env-chain-data { "block-time": (time "2024-01-05T20:00:00Z")})
+(free.kadenai-create-v2.get-current-tier-for-collection "test-collection")
+(free.kadenai-create-v2.reserve-mint "test-collection" "alice" 1)
+
+(commit-tx)
+
+;(coin.rotate "w:h7EqxsXk-ejhMXZaUZfnQXqn_cFRlBRUcAAZ-7-_qqY:keys-any" (read-keyset 'newkeys))
+
+
 
 
 ;  (begin-tx "offer")

@@ -44,6 +44,10 @@
 - Create a non fungible token and instant mint it to an user.
 - Needed signatures : ``gas-payer-key``, ``collection-key``, ``tmp-key``
 
+**creation-minting/create-token-polyfungible.tkpl:**
+- Create a a fungible token divided in 10 shares.
+- Needed signatures : ``gas-payer-key``, ``collection-key``, ``tmp-key``
+
 **creation-minting/create-token-only.tkpl:**
 - Only create a token but protect the mint with a guard.
 - Needed signatures : ``gas-payer-key``, ``collection-key``, ``tmp-key``
@@ -75,3 +79,47 @@
 **auction-sale/complete.tkpl:**
 - Complete and settle an auction sale (after the timeout)
 - Needed signatures : ``gas-payer-key``
+
+**transfer/transfer-ng.tkpl:**
+- Transfer a token using a direct transfer (policies should allow transfer)
+- Needed signatures : ``gas-payer-key``, ``user-XX.key``
+
+**royalties/rotate.tkpl:**
+- Rotate the account and keys of a royalty receiver
+- Needed signatures : ``gas-payer-key``, ``creator-key``
+
+**royalties/update_currencies.tkpl:**
+- Change the currencies allowed for royalty payment
+- Needed signatures : ``gas-payer-key``, ``creator-key``
+
+**royalties/update_rate.tkpl:**
+- Update the rate of a royalty only for an adjustable royalty policy
+- Needed signatures : ``gas-payer-key``, ``creator-key``
+
+**extra-policies/register-extra-policy.tkpl:**
+- Register a new extra policy (only for admin)
+- Needed signatures : ``gas-payer-key``, ``admin-key``
+
+**extra-policies/unregister-extra-policy.tkpl:**
+- Unregister an extra policy (only for admin)
+- Needed signatures : ``gas-payer-key``, ``admin-key``
+
+**extra-policies/blacklist-extra-policy.tkpl:**
+- Blacklist an extra policy (for a specific token)
+- Needed signatures : ``gas-payer-key``, ``creator-key``
+
+**extra-policies/remove-blacklist-extra-policy.tkpl:**
+- Remove from blacklist an extra policy (for a specific token)
+- Needed signatures : ``gas-payer-key``, ``creator-key``
+
+**trusted-custody/create-token-with-trusted-custody.tkpl:**
+- Create a non fungible token with trusted custody enabled and instant mint it to an user.
+- Needed signatures : ``gas-payer-key``, ``collection-key``, ``tmp-key``
+
+**trusted-custody/add-custodian.tkpl:**
+- Add a custodian to the trusted policy
+- Needed signatures : ``gas-payer-key``, ``creator-key``,
+
+**trusted-custody/remove-custodian.tkpl:**
+- Remove a custodian from the trusted policy
+- Needed signatures : ``gas-payer-key``, ``creator-key``,

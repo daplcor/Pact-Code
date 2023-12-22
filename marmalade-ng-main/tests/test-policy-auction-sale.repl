@@ -3,6 +3,10 @@
 (load "init/init-ledger.repl")
 (load "init/init-policy-auction-sale.repl")
 
+(begin-tx)
+(load "tools/events_analyzer.pact")
+(commit-tx)
+
 (begin-tx "Create a token")
 (env-hash (hash "CreateTx"))
 (use marmalade-ng.ledger)
@@ -11,9 +15,7 @@
 
 (print (+ "Token ID: => " (create-token-id (read-keyset 'create-ks) "http://token-1-auction" )))
 
-(env-sigs [{'key:"create", 'caps:[(ENFORCE-RESERVED)]}
-           {'key:"nobody", 'caps:[(MINT "t:LWZdYIxjht_J_PCA4RrThTdjD9VDCvkWabnh8tKNST8" "alice" 0.6)]},
-          ])
+(env-sigs [{'key:"create", 'caps:[(ENFORCE-RESERVED)]}])
 
 (create-token "t:LWZdYIxjht_J_PCA4RrThTdjD9VDCvkWabnh8tKNST8" 1 "http://token-1-auction"
               [marmalade-ng.policy-auction-sale] (read-keyset 'create-ks))
@@ -85,10 +87,16 @@
 (env-data {'marmalade_sale: {'sale_type:"auction", 'currency:coin },
            'marmalade_auction: {'recipient:"alice", 'start_price:10.0, 'increment_ratio:1.1 }})
 
-
+(env-events true)
 (sale "t:LWZdYIxjht_J_PCA4RrThTdjD9VDCvkWabnh8tKNST8" "alice" 0.1 (time "2023-06-01T00:00:00Z"))
 
-; CVerify that0.1 has been deducted from the balance of Alice
+(ev-analyzer.store (env-events true))
+(expect "Event AUCTION-SALE-OFFER has been emitted" true (ev-analyzer.is-present "AUCTION-SALE-OFFER"))
+(expect "Event AUCTION-SALE-OFFER -> sale_id" (hash "auction-sale-1") (ev-analyzer.param "AUCTION-SALE-OFFER" 0))
+(expect "Event AUCTION-SALE-OFFER -> token_id" "t:LWZdYIxjht_J_PCA4RrThTdjD9VDCvkWabnh8tKNST8" (ev-analyzer.param "AUCTION-SALE-OFFER" 1))
+(expect "Event AUCTION-SALE-OFFER -> price" 10.0 (ev-analyzer.param "AUCTION-SALE-OFFER" 2))
+
+; Verify that 0.1 has been deducted from the balance of Alice
 (expect "Balance of alice is 0.6 - 0.1" 0.5 (get-balance "t:LWZdYIxjht_J_PCA4RrThTdjD9VDCvkWabnh8tKNST8" "alice"))
 
 (expect-that "It should exist 1 active sale" (compose (length) (= 1)) (get-all-active-sales))
@@ -113,14 +121,26 @@
 (expect-failure "Below the starting price" "Price too low"
                (place-bid "utRLLLbDcGyMnBcuPDjo-VaxR_65Wxv2v8EhoD9z4-E" "bob" (read-keyset 'bob-ks) 9.9))
 
-; Now with the ight price
+; Now with the right price
+(env-events true)
 (place-bid "utRLLLbDcGyMnBcuPDjo-VaxR_65Wxv2v8EhoD9z4-E" "bob" (read-keyset 'bob-ks) 10.0)
+
+; Check the events
+(ev-analyzer.store (env-events true))
+(expect "Bid Event is present" true (ev-analyzer.is-present "PLACE-BID"))
+(expect "Bid params" ["utRLLLbDcGyMnBcuPDjo-VaxR_65Wxv2v8EhoD9z4-E" "t:LWZdYIxjht_J_PCA4RrThTdjD9VDCvkWabnh8tKNST8" "bob" 10.0 ] (ev-analyzer.params "PLACE-BID"))
+
 
 ; Verify that bob KDA account has been debited
 (expect "Balance should be 990" 990.0 (coin.get-balance "bob"))
 
 ; Verify that the buyer has been recorded
 (expect-that "Buyer has been recoreded" (compose (at 'current-buyer) (= "bob")) (get-sale "utRLLLbDcGyMnBcuPDjo-VaxR_65Wxv2v8EhoD9z4-E"))
+
+; We are far from triggering the time extension; verify that the timeout didn't move
+(expect-that "Timeout is the same" (compose (at 'timeout) (= (time "2023-06-01T00:00:00Z")))
+             (get-sale "utRLLLbDcGyMnBcuPDjo-VaxR_65Wxv2v8EhoD9z4-E"))
+
 (commit-tx)
 
 
@@ -138,7 +158,7 @@
 (expect-failure "Below the starting price" "Price too low"
                (place-bid "utRLLLbDcGyMnBcuPDjo-VaxR_65Wxv2v8EhoD9z4-E" "carol" (read-keyset 'carol-ks) 10.99))
 
-; Now with the ight price
+; Now with the right price
 (place-bid "utRLLLbDcGyMnBcuPDjo-VaxR_65Wxv2v8EhoD9z4-E" "carol" (read-keyset 'carol-ks) 11.0)
 
 ; Verify that carol KDA account has been debited
@@ -167,7 +187,7 @@
 (expect-failure "Below the starting price" "Price too low"
                (place-bid "utRLLLbDcGyMnBcuPDjo-VaxR_65Wxv2v8EhoD9z4-E" "bob" (read-keyset 'bob-ks) 12.09))
 
-; Now with the ight price
+; Now with the right price
 (place-bid "utRLLLbDcGyMnBcuPDjo-VaxR_65Wxv2v8EhoD9z4-E" "bob" (read-keyset 'bob-ks) 13.0)
 
 ; Verify that bob KDA account has been debited
@@ -194,6 +214,30 @@
 (commit-tx)
 
 
+;try an extension tomeout
+; Carol will bid just 29 minutes before the end
+(begin-tx "Carol wants to bid just before the end")
+(env-chain-data {"block-time": (time "2023-05-31T23:51:00Z")})
+(use marmalade-ng.policy-auction-sale)
+(env-data {'carol-ks:["carol-key"]})
+
+(env-sigs [ {'key:"carol-key", 'caps:[(coin.TRANSFER "carol" "c:09-juxzBu412pfsgBlM6Au7fOnwvSsX78Er66vnC6sI" 15.0)]}
+           ])
+
+; We check that before the bid, timeout is the original one
+(expect-that "Timeout is the same" (compose (at 'timeout) (= (time "2023-06-01T00:00:00Z")))
+             (get-sale "utRLLLbDcGyMnBcuPDjo-VaxR_65Wxv2v8EhoD9z4-E"))
+
+
+(place-bid "utRLLLbDcGyMnBcuPDjo-VaxR_65Wxv2v8EhoD9z4-E" "carol" (read-keyset 'carol-ks) 15.0)
+
+; Verify that the time has been extended
+(expect-that "Timeout has been extended" (compose (at 'timeout) (= (time "2023-06-01T00:01:00Z")))
+             (get-sale "utRLLLbDcGyMnBcuPDjo-VaxR_65Wxv2v8EhoD9z4-E"))
+
+; Rollback => so that Bob is still the winner
+(rollback-tx)
+
 
 ;Now the auction goes to its end; We close the defpact
 (begin-tx "Close the defpact")
@@ -215,7 +259,15 @@
 
 
 (env-data {'buyer:"bob", 'buyer-guard:{'pred:"keys-all", 'keys:["bob-key"]}})
+
+(env-events true)
 (continue-pact 1 false (hash "auction-sale-1"))
+
+(ev-analyzer.store (env-events true))
+(expect "Event AUCTION-SALE-BOUGHT has been emitted" true (ev-analyzer.is-present "AUCTION-SALE-BOUGHT"))
+(expect "Event AUCTION-SALE-BOUGHT -> sale_id" (hash "auction-sale-1") (ev-analyzer.param "AUCTION-SALE-BOUGHT" 0))
+(expect "Event AUCTION-SALE-BOUGHT -> token_id" "t:LWZdYIxjht_J_PCA4RrThTdjD9VDCvkWabnh8tKNST8" (ev-analyzer.param "AUCTION-SALE-BOUGHT" 1))
+(expect "Event AUCTION-SALE-BOUGHT -> price" 13.0 (ev-analyzer.param "AUCTION-SALE-BOUGHT" 2))
 
 ; Check that alice has been paid
 (expect "Balance should be 1013" 1013.0 (coin.get-balance "alice"))
@@ -275,7 +327,13 @@
    (continue-pact 1 false (hash "auction-sale-2")))
 
 ; But alice should be able to withdraw
+(env-events true)
 (continue-pact 0 true (hash "auction-sale-2"))
+
+(ev-analyzer.store (env-events true))
+(expect "Event AUCTION-SALE-WITHDRAWN has been emitted" true (ev-analyzer.is-present "AUCTION-SALE-WITHDRAWN"))
+(expect "Event AUCTION-SALE-WITHDRAWN -> sale_id" (hash "auction-sale-2") (ev-analyzer.param "AUCTION-SALE-WITHDRAWN" 0))
+(expect "Event AUCTION-SALE-WITHDRAWN -> token_id" "t:LWZdYIxjht_J_PCA4RrThTdjD9VDCvkWabnh8tKNST8" (ev-analyzer.param "AUCTION-SALE-WITHDRAWN" 1))
 
 ; Verify that the NFT has been refunded to alice
 (expect "Balance of alice is 0.5" 0.5 (get-balance "t:LWZdYIxjht_J_PCA4RrThTdjD9VDCvkWabnh8tKNST8" "alice"))

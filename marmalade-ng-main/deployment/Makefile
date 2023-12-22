@@ -21,6 +21,7 @@ TRANSACTION_FILES = interface-poly-fungible \
                     policy-disable-sale \
                     policy-disable-transfer \
                     policy-dutch-auction-sale \
+                    policy-extra-policies \
                     policy-fixed-issuance \
                     policy-fixed-sale \
                     policy-guards \
@@ -28,6 +29,7 @@ TRANSACTION_FILES = interface-poly-fungible \
                     policy-marketplace \
                     policy-non-fungible \
                     policy-royalty \
+                    policy-trusted-custody \
                     std-policies
 
 
