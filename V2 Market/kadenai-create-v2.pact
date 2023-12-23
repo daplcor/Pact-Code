@@ -416,7 +416,7 @@
             (
               (actual-cost:decimal (if (= currencyType "USD") 
                                        (let ((kdausdprice:decimal (at "kda-usd-price" (free.pay-oracle.get-kda-usd-price)))) 
-                                        (round (/ cost kdausdprice)8))
+                                        (floor (/ cost kdausdprice)8))
                                        cost))
               (mint-count:integer (get-whitelist-mint-count collection tierId account))
               (bankAc:string (get-bank))
