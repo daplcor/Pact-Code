@@ -56,16 +56,16 @@
           "cost": 0.0,
           "limit": 2,
           "currencyType": "KDA"
-        },
-        {
-          "tierId": "tier2",
-          "tierType": "PUBLIC",
-          "startTime": {"time": "2024-01-10T00:00:00Z"},
-          "endTime": {"time": "2024-01-11T00:00:00Z"},
-          "cost": 5.0,
-          "limit": 2,
-          "currencyType": "KDA"
         }
+        ;  {
+        ;    "tierId": "tier2",
+        ;    "tierType": "PUBLIC",
+        ;    "startTime": {"time": "2024-01-10T00:00:00Z"},
+        ;    "endTime": {"time": "2024-01-11T00:00:00Z"},
+        ;    "cost": 5.0,
+        ;    "limit": 2,
+        ;    "currencyType": "KDA"
+        ;  }
       ]
     },
     "upgrade": false
@@ -196,6 +196,73 @@
 (free.kadenai-create-v2.reserve-mint "test-collection" "alice" 1)
 
 (commit-tx)
+
+
+(begin-tx "add tiers")
+(env-keys ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"])
+(env-data {
+  "tier": [
+    {
+      "tierId": "tier0",
+      "tierType": "PUBLIC",
+      "startTime": {"time": "2023-01-03T20:00:00Z"},
+      "endTime": {"time": "2024-01-03T00:00:00Z"},
+      "cost": 50.0,
+      "limit": -1,
+      "currencyType": "USD"
+    },
+    {
+      "tierId": "tier1",
+      "tierType": "WL",
+      "startTime": {"time": "2024-01-04T00:00:01Z"},
+      "endTime": {"time": "2024-01-09T00:00:00Z"},
+      "cost": 0.0,
+      "limit": 2,
+      "currencyType": "KDA"
+    },
+    {
+      "tierId": "tierTest",
+      "tierType": "WL",
+      "startTime": {"time": "2024-01-12T00:00:00Z"},
+      "endTime": {"time": "2024-01-15T00:00:00Z"},
+      "cost": 0.0,
+      "limit": 1,
+      "currencyType": "KDA"
+    }],
+    "ac": ["bob, alice"]
+})
+
+(free.kadenai-create-v2.update-collection-tiers "test-collection" (read-msg 'tier))
+(free.kadenai-create-v2.add-whitelist-to-collection "test-collection" [{"tierId":"tierTest", "accounts":(read-msg 'ac)}])
+
+(commit-tx)
+
+
+
+(begin-tx "admin mint")
+(env-chain-data {"block-time": (time "2024-01-12T00:00:00Z")})
+(env-data {
+  "ks": {
+    "keys": ["alice-key"],
+    "pred": "keys-all"
+  },
+  'ac: ["alice, bob"]
+})
+(env-keys ["ku-ops"])
+;  (free.kadenai-create-v2.admin-mint "test-collection" "alice" (read-keyset 'ks) 1)
+;  (free.kadenai-create-v2.admin-mint "test-collection" "bob" (read-keyset 'ks) 1)
+;  (free.kadenai-create-v2.admin-mint "test-collection" "bob" (read-keyset 'ac) 1)
+(free.kadenai-create-v2.admin-mint "test-collection" "alice" (read-keyset 'ac) 1)
+
+
+(free.kadenai-create-v2.get-wl-collection)
+
+(commit-tx)
+
+;  (begin-tx "Free Mint")
+;  (env-keys ["alice-key"])
+;  (free.kadenai-create-v2.get-current-tier-for-collection "test-collection")
+;  (free.kadenai-create-v2.reserve-mint "test-collection" "alice" 1)
 
 ;(coin.rotate "w:h7EqxsXk-ejhMXZaUZfnQXqn_cFRlBRUcAAZ-7-_qqY:keys-any" (read-keyset 'newkeys))
 

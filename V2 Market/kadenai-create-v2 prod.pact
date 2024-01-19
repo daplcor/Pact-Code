@@ -4,17 +4,17 @@
 (define-keyset "free.ku-ops" (read-keyset "ku-ops"))
 (define-keyset "free.ku-bank" (read-keyset "ku-bank"))
 
-;  (namespace "n_a2fceb4ebd41f3bb808da95d1ca0af9b15cb068c")
-;  (define-keyset "free.create-ops" (read-keyset "create-ops"))
+(namespace "n_a2fceb4ebd41f3bb808da95d1ca0af9b15cb068c")
+(define-keyset "n_a2fceb4ebd41f3bb808da95d1ca0af9b15cb068c.create-ops" (read-keyset "create-ops"))
 
 (module kadenai-create-v2 GOVERNANCE
 
     (defcap GOVERNANCE ()
-    (enforce-guard (keyset-ref-guard "free.ku-admin" ))
+    (enforce-guard (keyset-ref-guard "n_a2fceb4ebd41f3bb808da95d1ca0af9b15cb068c.admin" ))
     )
   
     (defcap OPS()
-    (enforce-guard (keyset-ref-guard "free.ku-ops"))
+    (enforce-guard (keyset-ref-guard "n_a2fceb4ebd41f3bb808da95d1ca0af9b15cb068c.create-ops"))
     (compose-capability (OPS_INTERNAL))
     (compose-capability (WLMOD))
     )
@@ -64,7 +64,7 @@
 
 (defcap WLCREATOR:bool (collection:string)
 (with-read collections collection {'creatorGuard:=creatorGuard}
-(util.guards.enforce-or creatorGuard (keyset-ref-guard "free.ku-ops")))     
+(util.guards.enforce-or creatorGuard (keyset-ref-guard "n_a2fceb4ebd41f3bb808da95d1ca0af9b15cb068c.create-ops")))     
     "Must be the collection creator or have OPS capability"
   (compose-capability (WLMOD))
 )
@@ -424,7 +424,7 @@
           (let*
             (
               (actual-cost:decimal (if (= currencyType "USD") 
-                                       (let ((kdausdprice:decimal (at "kda-usd-price" (free.pay-oracle.get-kda-usd-price)))) 
+                                       (let ((kdausdprice:decimal (at "kda-usd-price" (n_a2fceb4ebd41f3bb808da95d1ca0af9b15cb068c.kai-oracle.get-kda-usd-price)))) 
                                         (floor (/ cost kdausdprice)8))
                                        cost))
               (mint-count:integer (get-whitelist-mint-count collection tierId account))

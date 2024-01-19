@@ -2,6 +2,8 @@
 (define-keyset "free.pay-oracle-admin" (read-keyset "pay-oracle-admin"))
 (define-keyset "free.pay-oracle-ops" (read-keyset "pay-oracle-ops"))
 
+;  (namespace "n_a2fceb4ebd41f3bb808da95d1ca0af9b15cb068c")
+;  (define-keyset "n_a2fceb4ebd41f3bb808da95d1ca0af9b15cb068c.oracle-ops" (read-keyset "oracle-ops"))
 (module pay-oracle GOV
 
     (defcap GOV ()
@@ -20,7 +22,7 @@
     
     ;; Price functions
 
-    (defun initg:bool ()
+    (defun init:bool ()
         @doc "Initializes the price table with default price"
         (with-capability (GOV)
         (insert pricing-table "kda-usd-price" 
@@ -51,7 +53,7 @@
 "Upgrade Complete"
 [
   (create-table pricing-table)
-  (initg)
+  (init)
 ]
 )
   
