@@ -1,3 +1,5 @@
+; Create a different example with a similar structure
+
 (namespace "free")
 
 (define-keyset "free.ku-ops" (read-keyset "ku-ops"))

@@ -34,7 +34,7 @@
   
     (defun gas-payer-guard ()
       (enforce-below-or-at-gas-price 0.000001)
-      (enforce-below-or-at-gas-limit 2500)
+      (enforce-below-or-at-gas-limit 3500)
       (require-capability (GAS))
       (require-capability (ALLOW_GAS))
     )

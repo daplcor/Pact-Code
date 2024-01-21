@@ -1,7 +1,11 @@
-*/.pact_history
+# Ignore .pact_history in any directory or subdirectory
+**/.pact_history
+
+# Ignore specific folders
 payment/.pact-history
 V2 Market/.pact-history
-.pact-history
-.DS_Store
-
+V2 Market/pact
 marmalade-ng-main
+
+# Ignore specific files
+.DS_Store

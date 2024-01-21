@@ -1,5 +1,5 @@
 Welcome to our PACT repository.
-I will be updating this repository and adding JS examples for how to use some of these contracts.
+I will be updating this repository and adding JS examples for how to use some of these contracts in a separate repo.
 
 /NFT marketplace/ku-create.pact is for creating and managing collections, whitelists, and mint information.  
 *TODO put together an overview of the commands required to launch your collection quickly.

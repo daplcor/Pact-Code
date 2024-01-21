@@ -1,3 +1,5 @@
+; Built for pact version 4.6.0
+
 (load "./v2/marmalade.repl")
 (load "../oracle/price.repl")
 
@@ -57,15 +59,6 @@
           "limit": 2,
           "currencyType": "KDA"
         }
-        ;  {
-        ;    "tierId": "tier2",
-        ;    "tierType": "PUBLIC",
-        ;    "startTime": {"time": "2024-01-10T00:00:00Z"},
-        ;    "endTime": {"time": "2024-01-11T00:00:00Z"},
-        ;    "cost": 5.0,
-        ;    "limit": 2,
-        ;    "currencyType": "KDA"
-        ;  }
       ]
     },
     "upgrade": false
@@ -142,14 +135,18 @@
 (env-data {
   "mg": {"keys": ["2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"], "pred": "keys-all"}
   ,"creatorGuard":  {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce", "2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"], "pred": "keys-any"}
+  ,"burn_guard":  {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce", "2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"], "pred": "keys-any"}
+  ,"mint_guard":  {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce", "2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"], "pred": "keys-any"}
+  ,"sale_guard":  {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce", "2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"], "pred": "keys-any"}
+  ,"transfer_guard":  {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce", "2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"], "pred": "keys-any"}
 , "collection_id": "collection:oqjdizj3K-xjeEyYytBfqwjm4O7xtYT7UnjiBhJjv_s"
 })
 (env-sigs [{
   'key: "048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"
   ,"caps": [
-    (marmalade-v2.ledger.MINT "t:2Set0w8pRLFPB5Yv2bvNWUtZTtjDOY8Uwfaw6FzPIUU" "k:2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652" 1.0)
+    (marmalade-v2.ledger.MINT "t:6my7vPLpD847VKLN3AkJ4N7GXcwp_9RPVZ_y47pDKsc" "k:2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652" 1.0)
   , (free.kadenai-create-v2.MINTPROCESS "test-collection")
-  , (marmalade-v2.ledger.CREATE-TOKEN "t:2Set0w8pRLFPB5Yv2bvNWUtZTtjDOY8Uwfaw6FzPIUU" (read-keyset 'creatorGuard))
+  , (marmalade-v2.ledger.CREATE-TOKEN "t:6my7vPLpD847VKLN3AkJ4N7GXcwp_9RPVZ_y47pDKsc" (read-keyset 'creatorGuard))
   ]
 }])
 (free.kadenai-create-v2.create-marmalade-token "ipfs//test2" 0 "test-collection" 2 (marmalade-v2.util-v1.create-policies marmalade-v2.util-v1.DEFAULT_COLLECTION))
@@ -160,15 +157,20 @@
 (env-data {
   "mg": {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"], "pred": "keys-all"}
   ,"creatorGuard":  {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce", "2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"], "pred": "keys-any"}
+  ,"burn_guard":  {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce", "2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"], "pred": "keys-any"}
+  ,"mint_guard":  {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce", "2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"], "pred": "keys-any"}
+  ,"sale_guard":  {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce", "2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"], "pred": "keys-any"}
+  ,"transfer_guard":  {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce", "2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"], "pred": "keys-any"}
+
   ,"newkeys":  {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce", "bob-key"], "pred": "keys-any"}
 ,"collection_id": "collection:oqjdizj3K-xjeEyYytBfqwjm4O7xtYT7UnjiBhJjv_s"
 })
 (env-sigs [{
   'key: "048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"
   ,"caps": [
-    (marmalade-v2.ledger.MINT "t:pqMLRltXo7Lfqo4O4atKRqNuROhbrwwfpKCfPVvjsGs" "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce" 1.0)
+    (marmalade-v2.ledger.MINT "t:kVyDcYDqeJjF3Wb6bXIk0J6Lw_G-97eElK3YTeB5IEs" "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce" 1.0)
   , (free.kadenai-create-v2.MINTPROCESS "test-collection")
-  , (marmalade-v2.ledger.CREATE-TOKEN "t:pqMLRltXo7Lfqo4O4atKRqNuROhbrwwfpKCfPVvjsGs" (read-keyset 'creatorGuard))
+  , (marmalade-v2.ledger.CREATE-TOKEN "t:kVyDcYDqeJjF3Wb6bXIk0J6Lw_G-97eElK3YTeB5IEs" (read-keyset 'creatorGuard))
   ]
 }])
 (free.kadenai-create-v2.create-marmalade-token  "ipfs//test1" 0 "test-collection" 1 (marmalade-v2.util-v1.create-policies marmalade-v2.util-v1.DEFAULT_COLLECTION))
@@ -264,103 +266,6 @@
 ;  (free.kadenai-create-v2.get-current-tier-for-collection "test-collection")
 ;  (free.kadenai-create-v2.reserve-mint "test-collection" "alice" 1)
 
-;(coin.rotate "w:h7EqxsXk-ejhMXZaUZfnQXqn_cFRlBRUcAAZ-7-_qqY:keys-any" (read-keyset 'newkeys))
 
-
-
-
-;  (begin-tx "offer")
-;  (env-hash (hash "offer-quote-only-1"))
-
-;  (env-chain-data {"block-time": (time "2023-07-20T11:26:35Z")})
-;  (env-data {
-;    "token-id": "t:6Ms0Chkvosh8-BfyESpDzXLhwgDz_uOQ4CUxgW95cGc"
-;    ,"quote": {
-;      "spec": {
-;      "fungible": coin
-;     ,"price": 5.0
-;     ,"amount": 1.0
-;     ,"seller-fungible-account": {
-;        "account": "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"
-;        ,"guard": {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"], "pred": "keys-all"}
-;    }
-;  }
-;     ,"seller-guard": {"keys": ["048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"], "pred": "keys-all"}
-;     ,"quote-guards": [{"keys": ["market"], "pred": "keys-all"}]
-;    }
-;    })
-  
-;  (env-sigs [
-;    { 'key: "048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce"
-;  , 'caps: [
-;    (marmalade-v2.ledger.OFFER "t:6Ms0Chkvosh8-BfyESpDzXLhwgDz_uOQ4CUxgW95cGc" "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce" 1.0 (time "2023-07-22T11:26:35Z"))]  
-;  }])
-
-;  (marmalade-v2.ledger.sale (read-msg 'token-id) "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce" 1.0 (time "2023-07-22T11:26:35Z"))
-;  ;  (commit-tx)
-
-;  (env-data {
-;    "buyer": "k:2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"
-;   ,"buyer_fungible_account": "k:2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"
-;   ,"buyer-guard": {"keys": ["2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"], "pred": "keys-all"}
-;   ,"marketplace-fee": {"marketplace-account": "", "mk-fee-percentage": 0.0 } 
-;  })
-  
-;  (test-capability (coin.COINBASE))
-;  (coin.coinbase "k:2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652" (read-keyset 'buyer-guard) 5.0)
-
-;  (env-sigs
-;    [{'key: "2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"
-;     ,'caps: [
-;       (marmalade-v2.ledger.BUY "t:6Ms0Chkvosh8-BfyESpDzXLhwgDz_uOQ4CUxgW95cGc" "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce" "k:2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652"  1.0 (time "2023-07-22T11:26:35Z") "v86vqj0OkIZQfD3XGETjij1sLjJH7Q6GZBZJeytDsEo")
-;       (marmalade-v2.ledger.SALE_PRIVATE "v86vqj0OkIZQfD3XGETjij1sLjJH7Q6GZBZJeytDsEo")
-;       (coin.TRANSFER "k:2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652" "c:YfM3DHcNV4AYj8M_wRSJquHYq2Lvikvy5O00K_GLc3s" 5.0)
-;      ]}])
-;      ;  (env-hash (hash "offer-royalty-0"))
-;      ;  (marmalade-v2.ledger.buy "t:ozvVxVAI8rhLUwlNyCJpa6GwZFGM0MqhWO-3EcSF2as" "k:048ca7383b2267a0ffe768b97b96104d0fb82e576c53e35a6a44e0bb675c53ce" "k:2c8d728e9f7faa69e432d0753907a4e84719f6a570d56f086c8616ac22f87652" (read-msg "buyer-guard") 1.0 "v86vqj0OkIZQfD3XGETjij1sLjJH7Q6GZBZJeytDsEo")
-
-;      (expect "Buy succeeds"
-;      true
-;      (continue-pact 1))
-;   (commit-tx)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  ; used for all tests, just make sure util has true/false as you want
-;  (hash { "uri": "ipfs://howdydoda/1", "precision": 0, "policies": (marmalade-v2.util-v1.create-policies marmalade-v2.util-v1.DEFAULT)LICIES})
-;  (hash { "uri": "ipfs://howdydoda/2", "precision": 0, "policies": (marmalade-v2.util-v1.create-policies marmalade-v2.util-v1.DEFAULT)LICIES})
-;  (hash { "uri": "ipfs://howdydoda/3", "precision": 0, "policies": (marmalade-v2.util-v1.create-policies marmalade-v2.util-v1.DEFAULT)LICIES})
-
-; collection test
-;  (hash [
-;  "t:8-MkQgwqJ0j5nxpkRs0YYZkRmYZhCN1awxve4i7SuxU",
-;  "t:QS5-JZvA2ZbKa4hesCtsMeV_ak3sEUWZFpr-3svlVcE",
-;  "t:WB0WneAuhXftRLzNFvRFaW-M4JNIoh-wU1IvLMZMjz0"])
-
-;  "emjZIM8krClpC5L8B33vAu8LD7zdap-m2uXM1a9jQbk"
-; "EoHS7a0lESX6j7bVmF-CdiCX8z_EUCuSTsq1DptmneU"
-
-; royalty test
-;  (hash [
-;  "t:mOKmJuy84oxnOkgQyLqikXMTRiC0tr03CtwqxhMbStY",
-;  "t:RlRzTnf2chXGLnKO88IBAvkFRc0PQ9EjBymKyzihs7Y",
-;  "t:QG9tcj0tlUu9-hatkhefXOeJlA-U-s9iwjoaUxmOUk4"
-;  ])
-;  "IPJ46HBWNS1Dh5sXcbIpuNFC6gSGs18bqrHUCB6GVzs"
-
-; Collection test-collection hashed.
-; collection:cxZkDVFSwKpcjd4K4ncAHfFJlZzwUBOk48CclhPceJc
 
 

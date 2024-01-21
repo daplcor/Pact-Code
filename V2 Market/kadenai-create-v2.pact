@@ -429,7 +429,7 @@
                                        cost))
               (mint-count:integer (get-whitelist-mint-count collection tierId account))
               (bankAc:string (get-bank))
-              (total-cost:decimal  (* (dec amount) actual-cost))
+              (total-cost:decimal  (*  amount actual-cost))
               (creator-amount:decimal (* total-cost PERCENT_TO_CREATOR))
               (bank-amount:decimal (- total-cost creator-amount))
               (acguard:guard (at "guard" (fungible::details account)))
